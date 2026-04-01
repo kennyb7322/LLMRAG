@@ -1,0 +1,345 @@
+# ============================================================================
+# LLMRAG Pipeline Configuration
+# Automated LLM + RAG Deployment Framework
+# Author: Ken Barnes / UCS Solutions
+# Repository: github.com/kennyb7322/LLMRAG-V3
+# ============================================================================
+
+project:
+  name: "LLMRAG"
+  version: "1.0.0"
+  description: "Automated LLM & RAG Deployment for AI/AGI/GI Genetic Frameworks"
+  author: "Ken Barnes - UCS Solutions"
+
+# ── DATA INGESTION ──────────────────────────────────────────────────────────
+ingestion:
+  sources:
+    - type: "filesystem"
+      path: "./data/documents"
+      formats: ["pdf", "docx", "txt", "md", "html", "csv", "json"]
+      recursive: true
+    - type: "api"
+      endpoint: ""  # Set your API endpoint
+      auth_type: "bearer"  # bearer | api_key | oauth2
+      batch_size: 100
+    - type: "database"
+      connection_string: ""  # Set your DB connection string
+      query: ""
+      driver: "postgresql"  # postgresql | mysql | mssql | oracle
+    - type: "web_crawler"
+      start_urls: []
+      max_depth: 3
+      respect_robots: true
+      rate_limit: 2  # requests per second
+    - type: "s3"
+      bucket: ""
+      prefix: ""
+      region: "us-east-1"
+
+  preprocessing:
+    cleaning:
+      remove_html: true
+      normalize_whitespace: true
+      remove_special_chars: false
+      min_content_length: 50
+    deduplication:
+      enabled: true
+      method: "minhash"  # minhash | exact | simhash
+      threshold: 0.85
+    pii_masking:
+      enabled: true
+      entities: ["SSN", "CREDIT_CARD", "EMAIL", "PHONE", "ADDRESS"]
+      replacement: "redacted"  # redacted | hash | mask
+
+  chunking:
+    strategy: "semantic"  # fixed | semantic | recursive | sentence
+    chunk_size: 512
+    chunk_overlap: 50
+    separators: ["\n\n", "\n", ". ", " "]
+    respect_boundaries: true  # Don't split mid-sentence
+
+  enrichment:
+    extract_metadata: true
+    extract_entities: true
+    generate_keywords: true
+    generate_summaries: true
+    add_timestamps: true
+
+# ── EMBEDDING + STORAGE ────────────────────────────────────────────────────
+embedding:
+  model:
+    provider: "openai"  # openai | huggingface | cohere | local
+    name: "text-embedding-3-small"  # Model name
+    dimensions: 1536
+    batch_size: 100
+    max_retries: 3
+  
+  local_model:  # Used when provider is "local"
+    path: "./models/embeddings"
+    device: "auto"  # auto | cpu | cuda | mps
+
+  storage:
+    vector_db:
+      provider: "chromadb"  # chromadb | pinecone | weaviate | qdrant | pgvector | milvus
+      collection_name: "llmrag_vectors"
+      # Provider-specific configs
+      chromadb:
+        persist_directory: "./data/vectordb"
+        distance_metric: "cosine"
+      pinecone:
+        api_key: ""
+        environment: ""
+        index_name: ""
+      pgvector:
+        connection_string: ""
+        table_name: "embeddings"
+    
+    graph_db:
+      enabled: false
+      provider: "neo4j"  # neo4j | neptune
+      uri: ""
+      auth: ""
+    
+    cache:
+      enabled: true
+      provider: "redis"  # redis | local
+      ttl: 3600
+      redis_url: "redis://localhost:6379"
+
+# ── RETRIEVAL PIPELINE ─────────────────────────────────────────────────────
+retrieval:
+  query_understanding:
+    rewrite_query: true
+    detect_entities: true
+    detect_intent: true
+    expand_query: true
+    time_awareness: true
+  
+  search:
+    methods: ["vector", "keyword", "hybrid"]
+    vector_top_k: 20
+    keyword_top_k: 10
+    hybrid_alpha: 0.7  # 0=keyword only, 1=vector only
+    metadata_filters: true
+  
+  post_retrieval:
+    reranking:
+      enabled: true
+      model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+      top_k: 10
+    deduplication: true
+    recency_filtering: false
+    recency_window_days: 30
+    permission_filtering: false
+    context_compression: true
+    chunk_stitching: true
+    parent_doc_lookup: true
+
+# ── GENERATION + OUTPUT ────────────────────────────────────────────────────
+generation:
+  llm:
+    provider: "openai"  # openai | anthropic | huggingface | ollama | local
+    model: "gpt-4o-mini"
+    temperature: 0.1
+    max_tokens: 4096
+    top_p: 0.95
+    
+    # Provider-specific
+    openai:
+      api_key: ""  # Set via env: OPENAI_API_KEY
+    anthropic:
+      api_key: ""  # Set via env: ANTHROPIC_API_KEY
+      model: "claude-sonnet-4-20250514"
+    ollama:
+      base_url: "http://localhost:11434"
+      model: "llama3"
+    local:
+      model_path: "./models/llm"
+      quantization: "q4_k_m"
+      context_length: 8192
+      gpu_layers: -1  # -1 for all
+
+  context_assembly:
+    max_context_tokens: 4000
+    ordering: "relevance"  # relevance | chronological | reverse_chronological
+    include_citations: true
+  
+  prompt_template: |
+    You are a helpful assistant. Answer the question based on the provided context.
+    If the context doesn't contain enough information, say so honestly.
+    
+    Context:
+    {context}
+    
+    Question: {question}
+    
+    Answer:
+
+  guardrails:
+    refuse_low_confidence: true
+    confidence_threshold: 0.3
+    max_hallucination_score: 0.5
+    content_filtering: true
+
+# ── SECURITY / GOVERNANCE ──────────────────────────────────────────────────
+security:
+  authentication:
+    enabled: true
+    method: "api_key"  # api_key | jwt | oauth2
+    api_key_header: "X-API-Key"
+  
+  rbac:
+    enabled: false
+    roles: ["admin", "user", "reader"]
+  
+  acl_filtering:
+    enabled: false
+    source: "metadata"
+  
+  encryption:
+    at_rest: true
+    in_transit: true
+    key_management: "local"  # local | aws_kms | azure_keyvault
+  
+  audit:
+    enabled: true
+    log_queries: true
+    log_responses: true
+    log_file: "./logs/audit.log"
+  
+  compliance:
+    frameworks: []  # HIPAA | SOC2 | GDPR | FedRAMP | PCI-DSS
+    data_retention_days: 90
+    right_to_delete: true
+
+# ── OBSERVABILITY / EVALUATION ─────────────────────────────────────────────
+observability:
+  logging:
+    level: "INFO"
+    format: "json"
+    file: "./logs/pipeline.log"
+  
+  metrics:
+    enabled: true
+    provider: "prometheus"  # prometheus | datadog | local
+    port: 9090
+  
+  tracing:
+    enabled: false
+    provider: "jaeger"
+    endpoint: ""
+  
+  evaluation:
+    auto_eval: true
+    metrics: ["faithfulness", "relevancy", "context_precision", "answer_correctness"]
+    feedback_loop: true
+
+# ── DEPLOYMENT ─────────────────────────────────────────────────────────────
+deployment:
+  mode: "local"  # local | docker | kubernetes | serverless
+  api:
+    host: "0.0.0.0"
+    port: 8000
+    workers: 4
+    cors_origins: ["*"]
+  
+  docker:
+    image: "llmrag:latest"
+    registry: ""
+  
+  scaling:
+    auto_scale: false
+    min_replicas: 1
+    max_replicas: 10
+    target_cpu: 70
+
+# ── CLOUD PROVIDERS ────────────────────────────────────────────────────────
+cloud:
+  azure:
+    enabled: false
+    endpoint: ""              # AZURE_OPENAI_ENDPOINT env var
+    api_key: ""               # AZURE_OPENAI_API_KEY env var
+    api_version: "2024-12-01-preview"
+    deployment: "gpt-4o"
+    copilot_studio:
+      endpoint: ""            # Microsoft Copilot Studio bot endpoint
+      secret: ""              # COPILOT_STUDIO_SECRET env var
+    frontier:
+      endpoint: ""            # Azure AI Foundry endpoint (Phi-4, MAI-1)
+      api_key: ""             # AZURE_FRONTIER_KEY env var
+    ai_search:
+      endpoint: ""            # Azure AI Search endpoint
+      api_key: ""             # AZURE_SEARCH_KEY env var
+      index: "llmrag-index"
+
+  aws:
+    enabled: false
+    region: "us-east-1"
+    bedrock_model: "anthropic.claude-3-5-sonnet-20241022-v2:0"
+    embed_model: "amazon.titan-embed-text-v2:0"
+    sagemaker:
+      endpoint_name: ""
+    kendra:
+      index_id: ""
+
+  gcp:
+    enabled: false
+    project_id: ""            # GCP_PROJECT_ID env var
+    location: "us-central1"
+    model: "gemini-2.5-pro"
+    api_key: ""               # GOOGLE_API_KEY env var
+    vertex_search:
+      datastore_id: ""
+
+  oci:
+    enabled: false
+    compartment_id: ""        # OCI_COMPARTMENT_ID env var
+    region: "us-ashburn-1"
+    model: "cohere.command-r-plus"
+
+# ── AGI FRAMEWORK ──────────────────────────────────────────────────────────
+agi:
+  enabled: false
+  max_reasoning_depth: 5
+  max_planning_steps: 20
+  confidence_threshold: 0.7
+  safety_threshold: 0.8
+  human_in_loop: true
+  autonomy_level: "supervised"    # supervised | semi-autonomous | autonomous
+  reasoning_strategy: "chain_of_thought"  # chain_of_thought | tree_of_thought | reflexion
+  memory_type: "hybrid"           # episodic | semantic | hybrid
+  cognitive_layers:
+    - perception
+    - memory
+    - reasoning
+    - planning
+    - action
+    - self_reflection
+    - alignment
+    - autonomy_governance
+
+# ── AGENTIC AI ─────────────────────────────────────────────────────────────
+agentic:
+  enabled: false
+  max_steps: 10
+  default_agent: "rag_agent"
+  agents:
+    - name: "rag_agent"
+      type: "rag"
+      description: "RAG-augmented Q&A with citations"
+    - name: "research_agent"
+      type: "research"
+      description: "Multi-source investigation and synthesis"
+    - name: "code_agent"
+      type: "code"
+      description: "Code generation, execution, debugging"
+    - name: "data_agent"
+      type: "data"
+      description: "SQL/API queries, data analysis"
+  tools:
+    - rag_query
+    - web_search
+    - code_execute
+    - file_read
+    - api_call
+    - calculator

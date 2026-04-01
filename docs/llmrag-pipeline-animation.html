@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=Fira+Code:wght@300;400;500;600&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:1920px;height:1080px;overflow:hidden;background:#04070d;}
+body{font-family:'Outfit',sans-serif;color:#e0e8f2;}
+canvas#bg{position:fixed;top:0;left:0;width:1920px;height:1080px;z-index:0;}
+.L{position:absolute;top:0;left:0;width:1920px;height:1080px;z-index:1;opacity:0;transition:opacity 0.7s;}
+.L.on{opacity:1;}
+
+/* Shared */
+.wm{position:absolute;top:18px;right:30px;font-family:'Fira Code',monospace;font-size:11px;color:rgba(0,229,255,0.35);z-index:99;}
+.tk{position:absolute;bottom:24px;left:50px;right:50px;display:flex;justify-content:space-between;align-items:center;font-family:'Fira Code',monospace;font-size:12px;z-index:99;}
+.tk-m{color:#00e5ff;}
+.tk-d{display:flex;gap:5px;}
+.dot{width:9px;height:9px;border-radius:50%;background:#1e2d4a;transition:all 0.3s;}
+.dot.g{background:#22d3a0;box-shadow:0 0 6px rgba(34,211,160,0.5);}
+.dot.c{background:#00e5ff;box-shadow:0 0 8px rgba(0,229,255,0.5);animation:bl 0.8s infinite;}
+@keyframes bl{0%,100%{transform:scale(1);}50%{transform:scale(1.4);}}
+@keyframes fi{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+@keyframes gs{0%,100%{background-position:0% 50%;}50%{background-position:100% 50%;}}
+
+/* ── TITLE ─────────────────────────── */
+#S0{display:flex;flex-direction:column;align-items:center;justify-content:center;}
+#S0 .badge{padding:7px 22px;border-radius:100px;background:rgba(0,229,255,0.07);border:1px solid rgba(0,229,255,0.2);font-family:'Fira Code',monospace;font-size:13px;color:#00e5ff;letter-spacing:2px;text-transform:uppercase;margin-bottom:18px;animation:fi 0.8s 0.2s both;}
+#S0 h1{font-size:68px;font-weight:900;letter-spacing:-3px;text-align:center;line-height:1.1;animation:fi 0.8s 0.3s both;}
+#S0 h1 .gr{background:linear-gradient(135deg,#00e5ff,#a855f7,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-size:200% 200%;animation:gs 4s ease infinite;}
+#S0 .sub{color:#6b82a6;font-size:20px;margin-top:14px;text-align:center;animation:fi 0.8s 0.5s both;max-width:900px;}
+#S0 .tags{display:flex;gap:10px;margin-top:24px;flex-wrap:wrap;justify-content:center;animation:fi 0.8s 0.7s both;}
+#S0 .tag{padding:5px 14px;border-radius:8px;font-size:12px;font-family:'Fira Code',monospace;border:1px solid;}
+
+/* ── PIPELINE (compact 5 rows) ─────── */
+#S1 .row{position:absolute;left:50px;right:50px;display:flex;align-items:stretch;gap:0;}
+#S1 .sl{position:absolute;left:50px;font-family:'Fira Code',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;opacity:0;transition:opacity 0.3s;}
+.nd{background:rgba(12,19,35,0.92);border:1.5px solid #1c2d4a;border-radius:10px;padding:12px 11px;flex:1;opacity:0;transform:scale(0.88);transition:all 0.5s cubic-bezier(0.16,1,0.3,1);min-width:0;}
+.nd.v{opacity:1;transform:scale(1);}
+.nd.gl{box-shadow:0 0 28px rgba(0,229,255,0.3);border-color:#00e5ff;}
+.nd.dn{border-color:#22d3a0;box-shadow:0 0 12px rgba(34,211,160,0.2);}
+.nd .ic{font-size:18px;margin-bottom:3px;}
+.nd .tt{font-size:11.5px;font-weight:700;margin-bottom:5px;}
+.nd .it{list-style:none;font-size:9.5px;font-family:'Fira Code',monospace;color:#6b82a6;}
+.nd .it li{padding:1px 0;padding-left:10px;position:relative;}
+.nd .it li::before{content:'›';position:absolute;left:0;color:#00e5ff;opacity:0.4;}
+.nd .it li.on{color:#00e5ff;}
+.nd .it li.on::before{opacity:1;}
+.ar{width:26px;flex-shrink:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.3s;}
+.ar.v{opacity:1;}
+.ar svg{width:16px;height:16px;}
+.ar path{stroke:#00e5ff;stroke-width:2;fill:none;}
+.va{position:absolute;left:50%;transform:translateX(-50%);opacity:0;transition:opacity 0.3s;}
+.va.v{opacity:1;}
+.va svg{width:16px;height:22px;}
+.va path{stroke:#a855f7;stroke-width:2;fill:none;}
+/* Row colors */
+.r0 .nd.gl{box-shadow:0 0 25px rgba(245,158,11,0.3);border-color:#f59e0b;}.r0 .nd.dn{border-color:#f59e0b;box-shadow:0 0 10px rgba(245,158,11,0.15);}
+.r1 .nd.gl{box-shadow:0 0 25px rgba(168,85,247,0.3);border-color:#a855f7;}.r1 .nd.dn{border-color:#a855f7;box-shadow:0 0 10px rgba(168,85,247,0.15);}
+.r2 .nd.gl{box-shadow:0 0 25px rgba(0,229,255,0.3);border-color:#00e5ff;}.r2 .nd.dn{border-color:#00e5ff;box-shadow:0 0 10px rgba(0,229,255,0.15);}
+.r3 .nd.gl{box-shadow:0 0 25px rgba(34,211,160,0.3);border-color:#22d3a0;}.r3 .nd.dn{border-color:#22d3a0;box-shadow:0 0 10px rgba(34,211,160,0.15);}
+.r4 .nd.gl{box-shadow:0 0 25px rgba(239,68,68,0.3);border-color:#ef4444;}.r4 .nd.dn{border-color:#ef4444;box-shadow:0 0 10px rgba(239,68,68,0.15);}
+
+/* ── PROVIDERS + CLOUD ─────────────── */
+#S2 .title{position:absolute;top:40px;left:0;right:0;text-align:center;font-size:32px;font-weight:800;letter-spacing:-1px;}
+#S2 .sub2{position:absolute;top:80px;left:0;right:0;text-align:center;font-size:14px;color:#6b82a6;}
+.hub{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,#141e33,#0a1020);border:2.5px solid #00e5ff;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 0 50px rgba(0,229,255,0.3);opacity:0;transition:opacity 0.5s;z-index:10;}
+.hub.v{opacity:1;}
+.hub .hi{font-size:32px;}.hub .hl{font-size:9px;font-weight:700;font-family:'Fira Code',monospace;color:#00e5ff;margin-top:3px;text-align:center;}
+.pc{position:absolute;width:145px;background:rgba(12,19,35,0.95);border:1.5px solid #1c2d4a;border-radius:12px;padding:12px 10px;text-align:center;opacity:0;transform:scale(0.7);transition:all 0.4s cubic-bezier(0.16,1,0.3,1);z-index:5;}
+.pc.v{opacity:1;transform:scale(1);}
+.pc .pi{font-size:22px;margin-bottom:4px;}.pc .pn{font-size:11.5px;font-weight:700;margin-bottom:2px;}.pc .pm{font-size:8.5px;font-family:'Fira Code',monospace;color:#6b82a6;margin-bottom:5px;}
+.pc .ps{font-size:8px;font-family:'Fira Code',monospace;padding:3px 8px;border-radius:100px;display:inline-block;}
+.pc.cn{box-shadow:0 0 20px var(--gc);}
+.pc.cn{border-color:var(--gc);}
+/* provider-specific vars set inline */
+svg.cl{position:absolute;top:0;left:0;width:1920px;height:1080px;pointer-events:none;z-index:2;}
+.cln{fill:none;stroke-width:1.5;stroke-dasharray:8 5;opacity:0;transition:opacity 0.4s;}
+.cln.v{opacity:0.45;animation:df 2.5s linear infinite;}
+@keyframes df{to{stroke-dashoffset:-26;}}
+
+/* ── AGI + AGENTIC ─────────────────── */
+#S3 .title3{position:absolute;top:40px;left:0;right:0;text-align:center;font-size:32px;font-weight:800;}
+#S3 .sub3{position:absolute;top:80px;left:0;right:0;text-align:center;font-size:14px;color:#6b82a6;}
+.agi-col{position:absolute;display:flex;flex-direction:column;gap:6px;}
+.agi-nd{background:rgba(12,19,35,0.92);border:1.5px solid #1c2d4a;border-radius:10px;padding:10px 14px;opacity:0;transform:translateX(-20px);transition:all 0.4s;}
+.agi-nd.v{opacity:1;transform:translateX(0);}
+.agi-nd.gl2{border-color:#a855f7;box-shadow:0 0 20px rgba(168,85,247,0.25);}
+.agi-nd .at{font-size:11px;font-weight:700;display:flex;align-items:center;gap:6px;}
+.agi-nd .ad{font-size:9px;font-family:'Fira Code',monospace;color:#6b82a6;margin-top:3px;}
+.agent-nd{background:rgba(12,19,35,0.92);border:1.5px solid #1c2d4a;border-radius:10px;padding:10px 14px;opacity:0;transform:translateX(20px);transition:all 0.4s;}
+.agent-nd.v{opacity:1;transform:translateX(0);}
+.agent-nd.gl3{border-color:#00e5ff;box-shadow:0 0 20px rgba(0,229,255,0.25);}
+.agent-nd .at{font-size:11px;font-weight:700;display:flex;align-items:center;gap:6px;}
+.agent-nd .ad{font-size:9px;font-family:'Fira Code',monospace;color:#6b82a6;margin-top:3px;}
+/* center connector */
+.center-conn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:200px;height:200px;border:2px solid rgba(0,229,255,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.5s;}
+.center-conn.v{opacity:1;animation:cc-pulse 3s infinite;}
+@keyframes cc-pulse{0%,100%{box-shadow:0 0 20px rgba(0,229,255,0.1);}50%{box-shadow:0 0 50px rgba(0,229,255,0.2);}}
+.center-conn .ci{font-size:48px;}
+.center-conn .ct{font-size:10px;font-family:'Fira Code',monospace;color:#00e5ff;text-align:center;margin-top:4px;}
+
+/* ── FINALE ────────────────────────── */
+#S4{display:flex;flex-direction:column;align-items:center;justify-content:center;}
+#S4 h2{font-size:44px;font-weight:900;letter-spacing:-2px;}
+#S4 h2 .gr{background:linear-gradient(135deg,#00e5ff,#a855f7,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+#S4 .fs{color:#6b82a6;font-size:16px;margin-top:4px;}
+#S4 .stats{display:flex;gap:40px;margin-top:28px;flex-wrap:wrap;justify-content:center;}
+#S4 .st{text-align:center;}
+#S4 .sv{font-size:36px;font-weight:900;font-family:'Fira Code',monospace;}
+#S4 .sl{font-size:10px;color:#6b82a6;text-transform:uppercase;letter-spacing:1.5px;margin-top:3px;}
+#S4 .repo{margin-top:32px;padding:10px 28px;border-radius:10px;background:rgba(0,229,255,0.07);border:1px solid rgba(0,229,255,0.25);font-family:'Fira Code',monospace;font-size:15px;color:#00e5ff;}
+#S4 .author{margin-top:16px;color:#6b82a6;font-size:13px;}
+</style>
+</head>
+<body>
+<canvas id="bg" width="1920" height="1080"></canvas>
+<div class="wm">github.com/kennyb7322/LLMRAG-V3</div>
+
+<!-- ═══ S0: TITLE ═══ -->
+<div class="L" id="S0">
+  <div class="badge">Automated AI / AGI / Agentic Framework</div>
+  <h1>How <span class="gr">LLM + RAG</span> Works</h1>
+  <h1 style="font-size:28px;font-weight:400;color:#6b82a6;margin-top:6px;animation:fi 0.8s 0.4s both;">End-to-End — Cloud · AGI · Agentic · Multi-Provider</h1>
+  <p class="sub">Fully automated pipeline connecting Azure, AWS, GCP, OCI, and every major AI provider — with AGI cognitive layers and autonomous agents.</p>
+  <div class="tags">
+    <div class="tag" style="border-color:#3b82f6;color:#3b82f6;">Azure + Copilot</div>
+    <div class="tag" style="border-color:#f59e0b;color:#f59e0b;">AWS Bedrock</div>
+    <div class="tag" style="border-color:#22d3a0;color:#22d3a0;">GCP Vertex AI</div>
+    <div class="tag" style="border-color:#ef4444;color:#ef4444;">OCI GenAI</div>
+    <div class="tag" style="border-color:#a855f7;color:#a855f7;">AGI Framework</div>
+    <div class="tag" style="border-color:#00e5ff;color:#00e5ff;">Agentic AI</div>
+  </div>
+</div>
+
+<!-- ═══ S1: PIPELINE (5 rows compact) ═══ -->
+<div class="L" id="S1">
+  <div class="sl" id="sl0" style="top:40px;color:#f59e0b;">01 Data + Ingestion</div>
+  <div class="row r0" id="R0" style="top:60px;"><div class="nd" id="p00"><div class="ic">📦</div><div class="tt">Data Sources</div><ul class="it"><li>Filesystem/APIs/DBs</li><li>S3/Web Crawler</li></ul></div><div class="ar" id="a00"><svg viewBox="0 0 16 16"><path d="M2 8h12M10 4l4 4-4 4"/></svg></div><div class="nd" id="p01"><div class="ic">🧹</div><div class="tt">Preprocessing</div><ul class="it"><li>Clean / Dedup</li><li>PII Masking</li></ul></div><div class="ar" id="a01"><svg viewBox="0 0 16 16"><path d="M2 8h12M10 4l4 4-4 4"/></svg></div><div class="nd" id="p02"><div class="ic">✂️</div><div class="tt">Chunking</div><ul class="it"><li>Semantic/Recursive</li><li>Overlap Control</li></ul></div><div class="ar" id="a02"><svg viewBox="0 0 16 16"><path d="M2 8h12M10 4l4 4-4 4"/></svg></div><div class="nd" id="p03"><div class="ic">🏷️</div><div class="tt">Enrichment</div><ul class="it"><li>Entities/Keywords</li><li>Metadata</li></ul></div></div>
+  <div class="va" id="v0" style="top:172px;"><svg viewBox="0 0 16 22"><path d="M8 2v18M4 16l4 4 4-4"/></svg></div>
+  <div class="sl" id="sl1" style="top:200px;color:#a855f7;">02 Embedding + Storage</div>
+  <div class="row r1" id="R1" style="top:220px;"><div class="nd" id="p10"><div class="ic">🧠</div><div class="tt">Embedding Models</div><ul class="it"><li>OpenAI/HuggingFace</li><li>Cohere/Local</li></ul></div><div class="ar" id="a10"><svg viewBox="0 0 16 16"><path d="M2 8h12M10 4l4 4-4 4"/></svg></div><div class="nd" id="p11"><div class="ic">🗄️</div><div class="tt">Vector Database</div><ul class="it"><li>ChromaDB/Pinecone</li><li>pgvector/Qdrant</li></ul></div><div class="ar" id="a11"><svg viewBox="0 0 16 16"><path d="M2 8h12M10 4l4 4-4 4"/></svg></div><div class="nd" id="p12"><div class="ic">📑</div><div class="tt">Index + Cache</div><ul class="it"><li>BM25/Hybrid</li><li>Redis Cache</li></ul></div></div>
+  <div class="va" id="v1" style="top:332px;"><svg viewBox="0 0 16 22"><path d="M8 2v18M4 16l4 4 4-4"/></svg></div>
+  <div class="sl" id="sl2" style="top:360px;color:#00e5ff;">03 Retrieval Pipeline</div>
+  <div class="row r2" id="R2" style="top:380px;"><div class="nd" id="p20"><div class="ic">💬</div><div class="tt">User Query</div><ul class="it"><li>Question + History</li><li>Filters</li></ul></div><div class="ar" id="a20"><svg viewBox="0 0 16 16"><path d="M2 8h12M10 4l4 4-4 4"/></svg></div><div class="nd" id="p21"><div class="ic">🔍</div><div class="tt">Query Understanding</div><ul class="it"><li>Rewrite/Expand</li><li>Intent/Entity</li></ul></div><div class="ar" id="a21"><svg viewBox="0 0 16 16"><path d="M2 8h12M10 4l4 4-4 4"/></svg></div><div class="nd" id="p22"><div class="ic">🔎</div><div class="tt">Multi-Search</div><ul class="it"><li>Vector + BM25</li><li>Hybrid Retrieval</li></ul></div><div class="ar" id="a22"><svg viewBox="0 0 16 16"><path d="M2 8h12M10 4l4 4-4 4"/></svg></div><div class="nd" id="p23"><div class="ic">⭐</div><div class="tt">Post-Retrieval</div><ul class="it"><li>Reranking/Dedup</li><li>Compression</li></ul></div></div>
+  <div class="va" id="v2" style="top:492px;"><svg viewBox="0 0 16 22"><path d="M8 2v18M4 16l4 4 4-4"/></svg></div>
+  <div class="sl" id="sl3" style="top:520px;color:#22d3a0;">04 Generation + Output</div>
+  <div class="row r3" id="R3" style="top:540px;"><div class="nd" id="p30"><div class="ic">📋</div><div class="tt">Context Assembly</div><ul class="it"><li>Token Budget</li><li>Citation Map</li></ul></div><div class="ar" id="a30"><svg viewBox="0 0 16 16"><path d="M2 8h12M10 4l4 4-4 4"/></svg></div><div class="nd" id="p31"><div class="ic">📝</div><div class="tt">Prompt Build</div><ul class="it"><li>System + Context</li><li>Guardrails</li></ul></div><div class="ar" id="a31"><svg viewBox="0 0 16 16"><path d="M2 8h12M10 4l4 4-4 4"/></svg></div><div class="nd" id="p32"><div class="ic">🤖</div><div class="tt">LLM Inference</div><ul class="it"><li>Grounded Gen</li><li>Confidence Score</li></ul></div><div class="ar" id="a32"><svg viewBox="0 0 16 16"><path d="M2 8h12M10 4l4 4-4 4"/></svg></div><div class="nd" id="p33"><div class="ic">✅</div><div class="tt">Final Output</div><ul class="it"><li>Answer + Citations</li><li>Sources + Score</li></ul></div></div>
+  <div class="va" id="v3" style="top:652px;"><svg viewBox="0 0 16 22"><path d="M8 2v18M4 16l4 4 4-4"/></svg></div>
+  <div class="sl" id="sl4" style="top:680px;color:#ef4444;">05 Security / Governance</div>
+  <div class="row r4" id="R4" style="top:700px;"><div class="nd" id="p40"><div class="ic">🔐</div><div class="tt">Auth + RBAC</div><ul class="it"><li>API Key/JWT</li><li>Role Permissions</li></ul></div><div class="ar" id="a40"><svg viewBox="0 0 16 16"><path d="M2 8h12M10 4l4 4-4 4"/></svg></div><div class="nd" id="p41"><div class="ic">🛡️</div><div class="tt">Data Protection</div><ul class="it"><li>Encrypt Rest/Transit</li><li>PII Auto-Mask</li></ul></div><div class="ar" id="a41"><svg viewBox="0 0 16 16"><path d="M2 8h12M10 4l4 4-4 4"/></svg></div><div class="nd" id="p42"><div class="ic">📊</div><div class="tt">Compliance</div><ul class="it"><li>HIPAA/SOC2/GDPR</li><li>FedRAMP/PCI-DSS</li></ul></div><div class="ar" id="a42"><svg viewBox="0 0 16 16"><path d="M2 8h12M10 4l4 4-4 4"/></svg></div><div class="nd" id="p43"><div class="ic">📈</div><div class="tt">RAG Evaluation</div><ul class="it"><li>Faithfulness</li><li>Feedback Loop</li></ul></div></div>
+</div>
+
+<!-- ═══ S2: PROVIDERS + CLOUD ═══ -->
+<div class="L" id="S2">
+  <div class="title">Connected AI & Cloud Providers</div>
+  <div class="sub2">8 AI Frameworks + 4 Cloud Platforms — swap with one config change</div>
+  <svg class="cl" id="clines" viewBox="0 0 1920 1080"></svg>
+  <div class="hub" id="hub"><div class="hi">🧬</div><div class="hl">LLMRAG<br>ENGINE</div></div>
+  <!-- AI Providers (top arc) -->
+  <div class="pc" id="c0" style="top:140px;left:100px;--gc:#22d3a0;"><div class="pi">🟢</div><div class="pn">OpenAI / ChatGPT</div><div class="pm">gpt-4o · embedding-3</div><div class="ps" style="background:rgba(34,211,160,0.1);color:#22d3a0;">LLM + Embed</div></div>
+  <div class="pc" id="c1" style="top:140px;left:340px;--gc:#f59e0b;"><div class="pi">🟠</div><div class="pn">Anthropic / Claude</div><div class="pm">sonnet-4 · opus-4</div><div class="ps" style="background:rgba(245,158,11,0.1);color:#f59e0b;">LLM</div></div>
+  <div class="pc" id="c2" style="top:140px;left:580px;--gc:#3b82f6;"><div class="pi">🔵</div><div class="pn">Google / Gemini</div><div class="pm">2.5-pro · flash</div><div class="ps" style="background:rgba(59,130,246,0.1);color:#3b82f6;">LLM + Embed</div></div>
+  <div class="pc" id="c3" style="top:140px;left:1200px;--gc:#ccc;"><div class="pi">⚡</div><div class="pn">xAI / Grok</div><div class="pm">grok-3 · grok-3-mini</div><div class="ps" style="background:rgba(255,255,255,0.05);color:#ccc;">LLM</div></div>
+  <div class="pc" id="c4" style="top:140px;left:1430px;--gc:#00e5ff;"><div class="pi">🦙</div><div class="pn">Meta / Llama</div><div class="pm">llama-4 · llama-3.3</div><div class="ps" style="background:rgba(0,229,255,0.1);color:#00e5ff;">Local LLM</div></div>
+  <div class="pc" id="c5" style="top:140px;left:1680px;--gc:#a855f7;"><div class="pi">🟣</div><div class="pn">Perplexity</div><div class="pm">sonar-pro</div><div class="ps" style="background:rgba(168,85,247,0.1);color:#a855f7;">Search+LLM</div></div>
+  <!-- Cloud Providers (bottom arc) -->
+  <div class="pc" id="c6" style="top:740px;left:160px;--gc:#3b82f6;"><div class="pi">☁️</div><div class="pn">Microsoft Azure</div><div class="pm">OpenAI Svc · Copilot · Frontier</div><div class="ps" style="background:rgba(59,130,246,0.1);color:#3b82f6;">Cloud + AI</div></div>
+  <div class="pc" id="c7" style="top:740px;left:520px;--gc:#f59e0b;"><div class="pi">☁️</div><div class="pn">Amazon AWS</div><div class="pm">Bedrock · SageMaker · Titan</div><div class="ps" style="background:rgba(245,158,11,0.1);color:#f59e0b;">Cloud + AI</div></div>
+  <div class="pc" id="c8" style="top:740px;left:880px;--gc:#22d3a0;"><div class="pi">☁️</div><div class="pn">Google GCP</div><div class="pm">Vertex AI · BigQuery ML</div><div class="ps" style="background:rgba(34,211,160,0.1);color:#22d3a0;">Cloud + AI</div></div>
+  <div class="pc" id="c9" style="top:740px;left:1240px;--gc:#ef4444;"><div class="pi">☁️</div><div class="pn">Oracle OCI</div><div class="pm">GenAI · Data Science</div><div class="ps" style="background:rgba(239,68,68,0.1);color:#ef4444;">Cloud + AI</div></div>
+  <div class="pc" id="c10" style="top:740px;left:1560px;--gc:#84cc16;"><div class="pi">🫒</div><div class="pn">Ollama + HuggingFace</div><div class="pm">Local · Embed · Rerank</div><div class="ps" style="background:rgba(132,204,22,0.1);color:#84cc16;">Local</div></div>
+</div>
+
+<!-- ═══ S3: AGI + AGENTIC ═══ -->
+<div class="L" id="S3">
+  <div class="title3">AGI Cognitive Layers + Agentic Framework</div>
+  <div class="sub3">8-layer cognitive architecture with autonomous agent orchestration — RAG-augmented reasoning</div>
+  <!-- AGI Layers (left) -->
+  <div class="agi-col" id="agi-col" style="left:80px;top:130px;width:380px;">
+    <div class="agi-nd" id="ag0"><div class="at">🎯 Layer 1 — Perception</div><div class="ad">Multi-modal input processing & understanding</div></div>
+    <div class="agi-nd" id="ag1"><div class="at">🧠 Layer 2 — Memory</div><div class="ad">Working · Episodic · Semantic · Long-term</div></div>
+    <div class="agi-nd" id="ag2"><div class="at">💡 Layer 3 — Reasoning</div><div class="ad">Chain-of-Thought · Tree-of-Thought · Reflexion</div></div>
+    <div class="agi-nd" id="ag3"><div class="at">📋 Layer 4 — Planning</div><div class="ad">Goal decomposition · Task scheduling · Re-planning</div></div>
+    <div class="agi-nd" id="ag4"><div class="at">⚡ Layer 5 — Action</div><div class="ad">Tool use · Code execution · API calls</div></div>
+    <div class="agi-nd" id="ag5"><div class="at">🪞 Layer 6 — Self-Reflection</div><div class="ad">Meta-cognition · Confidence calibration</div></div>
+    <div class="agi-nd" id="ag6"><div class="at">🛡️ Layer 7 — Alignment</div><div class="ad">Ethical constraints · Safety boundaries</div></div>
+    <div class="agi-nd" id="ag7"><div class="at">🔐 Layer 8 — Autonomy Governance</div><div class="ad">Human-in-loop · Kill switch · Scope limits</div></div>
+  </div>
+  <!-- Center connector -->
+  <div class="center-conn" id="cc"><div class="ci">🔄</div><div class="ct">LLM + RAG<br>PIPELINE</div></div>
+  <!-- Agentic Framework (right) -->
+  <div class="agi-col" style="right:80px;top:130px;width:380px;">
+    <div class="agent-nd" id="at0"><div class="at">🤖 RAG Agent</div><div class="ad">Retrieval-augmented Q&A with citations</div></div>
+    <div class="agent-nd" id="at1"><div class="at">🔬 Research Agent</div><div class="ad">Multi-source investigation & synthesis</div></div>
+    <div class="agent-nd" id="at2"><div class="at">💻 Code Agent</div><div class="ad">Code generation · execution · debugging</div></div>
+    <div class="agent-nd" id="at3"><div class="at">📊 Data Agent</div><div class="ad">SQL/API queries · analysis · visualization</div></div>
+    <div class="agent-nd" id="at4"><div class="at">🔧 Tool Registry</div><div class="ad">web_search · code_exec · file_read · api_call</div></div>
+    <div class="agent-nd" id="at5"><div class="at">🎭 Orchestrator Agent</div><div class="ad">Multi-agent coordination & delegation</div></div>
+    <div class="agent-nd" id="at6"><div class="at">☁️ Cloud Agent Bridge</div><div class="ad">Azure Copilot · Bedrock · Vertex · OCI</div></div>
+    <div class="agent-nd" id="at7"><div class="at">🔄 Think → Act → Observe Loop</div><div class="ad">Autonomous reasoning with human-in-loop safety</div></div>
+  </div>
+</div>
+
+<!-- ═══ S4: FINALE ═══ -->
+<div class="L" id="S4">
+  <h2><span class="gr">LLMRAG</span> — All Systems Operational</h2>
+  <div class="fs">Automated LLM + RAG · Cloud · AGI · Agentic Framework</div>
+  <div class="stats">
+    <div class="st"><div class="sv" style="color:#00e5ff;">15</div><div class="sl">Python Modules</div></div>
+    <div class="st"><div class="sv" style="color:#a855f7;">8</div><div class="sl">AI Providers</div></div>
+    <div class="st"><div class="sv" style="color:#3b82f6;">4</div><div class="sl">Cloud Platforms</div></div>
+    <div class="st"><div class="sv" style="color:#22d3a0;">8</div><div class="sl">AGI Layers</div></div>
+    <div class="st"><div class="sv" style="color:#f59e0b;">6</div><div class="sl">Agent Types</div></div>
+    <div class="st"><div class="sv" style="color:#ec4899;">5</div><div class="sl">Compliance</div></div>
+  </div>
+  <div class="repo">github.com/kennyb7322/LLMRAG-V3</div>
+  <div class="author">Ken Barnes, Ph.D. — UCS Solutions — 2025</div>
+</div>
+
+<!-- TICKER -->
+<div class="tk"><div class="tk-m" id="tm">Initializing...</div><div class="tk-d"><div class="dot" id="d0"></div><div class="dot" id="d1"></div><div class="dot" id="d2"></div><div class="dot" id="d3"></div><div class="dot" id="d4"></div><div class="dot" id="d5"></div><div class="dot" id="d6"></div><div class="dot" id="d7"></div></div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const NODES={0:[0,1,2,3],1:[0,1,2],2:[0,1,2,3],3:[0,1,2,3],4:[0,1,2,3]};
+const MSGS=['📥 Ingesting data sources...','🧠 Embedding & vectorizing...','🔍 Retrieval pipeline...','✨ LLM generation...','🔐 Security & compliance...'];
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function tk(t){$('tm').textContent=t;}
+function dot(i,c){$('d'+i).className='dot'+(c?' '+c:'');}
+function show(id){const e=$(id);if(e){e.classList.add('v');}}
+
+// BG particles
+(function(){const c=$('bg'),x=c.getContext('2d');const ps=[];for(let i=0;i<45;i++)ps.push({x:Math.random()*1920,y:Math.random()*1080,vx:(Math.random()-0.5)*0.4,vy:(Math.random()-0.5)*0.4,r:Math.random()*1.8+0.5,c:['#00e5ff','#a855f7','#22d3a0','#3b82f6'][i%4]});function d(){x.clearRect(0,0,1920,1080);for(let i=0;i<ps.length;i++)for(let j=i+1;j<ps.length;j++){const dd=Math.hypot(ps[i].x-ps[j].x,ps[i].y-ps[j].y);if(dd<140){x.beginPath();x.moveTo(ps[i].x,ps[i].y);x.lineTo(ps[j].x,ps[j].y);x.strokeStyle=`rgba(0,229,255,${0.05*(1-dd/140)})`;x.lineWidth=0.5;x.stroke();}}for(const p of ps){p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>1920)p.vx*=-1;if(p.y<0||p.y>1080)p.vy*=-1;x.beginPath();x.arc(p.x,p.y,p.r,0,Math.PI*2);x.fillStyle=p.c;x.globalAlpha=0.3;x.fill();x.globalAlpha=1;}requestAnimationFrame(d);}d();})();
+
+async function animNode(r,n,d=180){const nd=$('p'+r+n);nd.classList.add('v','gl');await sleep(d);const li=nd.querySelectorAll('.it li');for(const l of li){l.classList.add('on');await sleep(40);}nd.classList.remove('gl');nd.classList.add('dn');}
+async function animStage(s){tk(MSGS[s]);dot(s,'c');$('sl'+s).style.opacity='1';$('sl'+s).style.transition='opacity 0.3s';if(s>0)show('v'+(s-1));const ns=NODES[s];for(let i=0;i<ns.length;i++){await animNode(s,ns[i],200);if(i<ns.length-1)show('a'+s+i);}dot(s,'g');await sleep(150);}
+
+function drawLine(el,color){
+  const svg=$('clines');const hx=960,hy=540;
+  const r=el.getBoundingClientRect();
+  const cx=r.left+r.width/2,cy=r.top+r.height/2;
+  const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+  l.setAttribute('x1',cx);l.setAttribute('y1',cy);l.setAttribute('x2',hx);l.setAttribute('y2',hy);
+  l.setAttribute('stroke',color);l.classList.add('cln');svg.appendChild(l);
+  setTimeout(()=>l.classList.add('v'),30);
+}
+const PCOLORS=['#22d3a0','#f59e0b','#3b82f6','#cccccc','#00e5ff','#a855f7','#3b82f6','#f59e0b','#22d3a0','#ef4444','#84cc16'];
+
+async function run(){
+  // TITLE (3.5s)
+  $('S0').classList.add('on');await sleep(3500);$('S0').classList.remove('on');await sleep(500);
+
+  // PIPELINE (20s)
+  $('S1').classList.add('on');tk('🚀 Starting LLMRAG pipeline...');await sleep(400);
+  for(let s=0;s<5;s++){await animStage(s);await sleep(150);}
+  tk('✅ Pipeline — 5 stages operational');await sleep(1500);$('S1').classList.remove('on');await sleep(500);
+
+  // PROVIDERS + CLOUD (16s)
+  $('S2').classList.add('on');tk('🔌 Connecting AI & cloud providers...');await sleep(400);
+  show('hub');await sleep(400);
+  for(let i=0;i<=10;i++){show('c'+i);await sleep(200);}
+  await sleep(300);
+  dot(5,'c');tk('⚡ Establishing provider connections...');
+  for(let i=0;i<=10;i++){const el=$('c'+i);drawLine(el,PCOLORS[i]);el.classList.add('cn');await sleep(180);}
+  dot(5,'g');tk('🔌 11 providers connected — AI + Cloud');await sleep(3000);$('S2').classList.remove('on');await sleep(500);
+
+  // AGI + AGENTIC (14s)
+  $('S3').classList.add('on');tk('🧬 Engaging AGI cognitive layers...');dot(6,'c');await sleep(400);
+  for(let i=0;i<8;i++){$('ag'+i).classList.add('v');await sleep(200);$('ag'+i).classList.add('gl2');}
+  await sleep(300);
+  show('cc');$('cc').classList.add('v');
+  tk('🤖 Activating agentic framework...');dot(6,'g');dot(7,'c');await sleep(400);
+  for(let i=0;i<8;i++){$('at'+i).classList.add('v');await sleep(200);$('at'+i).classList.add('gl3');}
+  dot(7,'g');tk('🧬 8 AGI layers + 6 agent types — fully connected');await sleep(3500);$('S3').classList.remove('on');await sleep(500);
+
+  // FINALE (6s)
+  $('S4').classList.add('on');tk('✅ LLMRAG — All Systems Operational — github.com/kennyb7322/LLMRAG-V3');await sleep(7000);
+}
+setTimeout(run,400);
+</script>
+</body>
+</html>

@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLLMRAG — Automated LLM & RAG Pipeline — Interactive Architecture</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Fira+Code:wght@300;400;500;600&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#04070d;
+  --bg2:#0a1020;
+  --surface:#0f1729;
+  --surface2:#141e33;
+  --surface3:#1a2744;
+  --border:#1c2d4a;
+  --text:#d8e3f0;
+  --text2:#7a8fad;
+  --cyan:#00e5ff;
+  --purple:#a855f7;
+  --green:#22d3a0;
+  --amber:#f59e0b;
+  --red:#ef4444;
+  --blue:#3b82f6;
+  --pink:#ec4899;
+  --orange:#f97316;
+  --lime:#84cc16;
+  --glow-cyan:rgba(0,229,255,0.35);
+  --glow-purple:rgba(168,85,247,0.35);
+  --glow-green:rgba(34,211,160,0.3);
+}
+
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Outfit',sans-serif;
+  overflow-x:hidden;
+  cursor:default;
+}
+
+/* ══ Canvas Background ════════════════════════════════ */
+#bg-canvas{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  z-index:0;pointer-events:none;opacity:0.5;
+}
+
+.content{position:relative;z-index:1;}
+
+/* ══ Header ═══════════════════════════════════════════ */
+.hero{
+  text-align:center;padding:60px 20px 30px;
+  position:relative;
+}
+.hero::before{
+  content:'';position:absolute;top:0;left:50%;
+  transform:translateX(-50%);
+  width:600px;height:300px;
+  background:radial-gradient(ellipse,var(--glow-cyan),transparent 70%);
+  opacity:0.15;pointer-events:none;
+}
+.hero-badge{
+  display:inline-block;
+  padding:6px 18px;border-radius:100px;
+  background:rgba(0,229,255,0.08);
+  border:1px solid rgba(0,229,255,0.2);
+  font-family:'Fira Code',monospace;
+  font-size:0.72rem;color:var(--cyan);
+  letter-spacing:2px;text-transform:uppercase;
+  margin-bottom:16px;
+  animation:fade-in 1s 0.2s both;
+}
+.hero h1{
+  font-size:clamp(2rem,5vw,3.5rem);
+  font-weight:900;letter-spacing:-2px;
+  line-height:1.1;
+  animation:fade-in 1s 0.4s both;
+}
+.hero h1 .grad{
+  background:linear-gradient(135deg,var(--cyan),var(--purple),var(--pink));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-size:200% 200%;
+  animation:gradient-shift 4s ease infinite;
+}
+@keyframes gradient-shift{
+  0%,100%{background-position:0% 50%;}
+  50%{background-position:100% 50%;}
+}
+.hero .sub{
+  color:var(--text2);font-size:1.05rem;
+  margin-top:12px;max-width:700px;margin-inline:auto;
+  animation:fade-in 1s 0.6s both;
+}
+@keyframes fade-in{
+  from{opacity:0;transform:translateY(20px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
+/* ══ Controls ═════════════════════════════════════════ */
+.controls{
+  display:flex;justify-content:center;gap:10px;
+  padding:20px;flex-wrap:wrap;
+  animation:fade-in 1s 0.8s both;
+}
+.cbtn{
+  background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);padding:10px 22px;border-radius:10px;
+  cursor:pointer;font-family:'Fira Code',monospace;
+  font-size:0.78rem;transition:all 0.35s;
+  position:relative;overflow:hidden;
+}
+.cbtn::after{
+  content:'';position:absolute;top:0;left:-100%;
+  width:100%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(0,229,255,0.1),transparent);
+  transition:left 0.5s;
+}
+.cbtn:hover::after{left:100%;}
+.cbtn:hover{
+  border-color:var(--cyan);color:var(--cyan);
+  box-shadow:0 0 20px var(--glow-cyan);
+  transform:translateY(-2px);
+}
+.cbtn-primary{
+  background:linear-gradient(135deg,var(--cyan),var(--purple));
+  border:none;font-weight:600;color:#fff;
+}
+.cbtn-primary:hover{
+  box-shadow:0 0 30px var(--glow-cyan),0 0 60px var(--glow-purple);
+}
+
+/* ══ Section Headers ══════════════════════════════════ */
+.section{padding:30px 20px;max-width:1500px;margin:0 auto;}
+.section-head{
+  display:flex;align-items:center;gap:14px;
+  margin-bottom:20px;
+}
+.section-num{
+  width:36px;height:36px;border-radius:10px;
+  display:grid;place-items:center;
+  font-family:'Fira Code',monospace;
+  font-weight:700;font-size:0.85rem;
+}
+.section-label{font-size:1.15rem;font-weight:700;letter-spacing:-0.5px;}
+
+/* ══ Pipeline Row ═════════════════════════════════════ */
+.pipe-row{
+  display:flex;align-items:stretch;gap:0;
+  flex-wrap:nowrap;overflow-x:auto;
+  padding-bottom:8px;
+}
+.pipe-node{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;padding:18px 16px;
+  min-width:180px;flex:1;
+  position:relative;
+  cursor:pointer;
+  transition:all 0.5s cubic-bezier(0.16,1,0.3,1);
+  opacity:0;transform:translateY(24px) scale(0.92);
+}
+.pipe-node.show{opacity:1;transform:translateY(0) scale(1);}
+.pipe-node:hover{
+  border-color:var(--cyan);
+  box-shadow:0 0 25px var(--glow-cyan);
+  transform:translateY(-4px) scale(1.02);
+  z-index:5;
+}
+.pipe-node.glow{
+  animation:node-glow 2s ease-in-out infinite;
+}
+@keyframes node-glow{
+  0%,100%{box-shadow:0 0 8px var(--glow-cyan);}
+  50%{box-shadow:0 0 35px var(--glow-cyan),0 0 60px rgba(0,229,255,0.1);}
+}
+.pipe-node.done{
+  border-color:var(--green);
+  box-shadow:0 0 15px var(--glow-green);
+}
+.pipe-node .icon{font-size:1.5rem;margin-bottom:6px;}
+.pipe-node .title{
+  font-size:0.82rem;font-weight:700;
+  margin-bottom:8px;color:var(--text);
+}
+.pipe-node .items{
+  list-style:none;font-size:0.7rem;
+  font-family:'Fira Code',monospace;
+  color:var(--text2);
+}
+.pipe-node .items li{
+  padding:2px 0;padding-left:14px;position:relative;
+  transition:color 0.3s;
+}
+.pipe-node .items li::before{
+  content:'▸';position:absolute;left:0;
+  color:var(--cyan);opacity:0.5;
+}
+.pipe-node .items li.lit{color:var(--cyan);}
+.pipe-node .items li.lit::before{opacity:1;}
+
+/* Arrow connectors */
+.pipe-arrow{
+  display:flex;align-items:center;justify-content:center;
+  min-width:40px;flex-shrink:0;
+  opacity:0;transition:opacity 0.4s;
+}
+.pipe-arrow.show{opacity:1;}
+.pipe-arrow svg{width:28px;height:28px;}
+.pipe-arrow path{
+  stroke:var(--cyan);stroke-width:2;fill:none;
+  stroke-dasharray:40;stroke-dashoffset:40;
+  transition:stroke-dashoffset 0.8s ease;
+}
+.pipe-arrow.show path{stroke-dashoffset:0;}
+
+/* Vertical arrows */
+.v-arrow{
+  display:flex;justify-content:center;padding:8px 0;
+  opacity:0;transition:opacity 0.4s;
+}
+.v-arrow.show{opacity:1;}
+.v-arrow svg{width:28px;height:40px;}
+.v-arrow path{
+  stroke:var(--purple);stroke-width:2;fill:none;
+  stroke-dasharray:50;stroke-dashoffset:50;
+  transition:stroke-dashoffset 0.8s ease;
+}
+.v-arrow.show path{stroke-dashoffset:0;}
+
+/* ══ Section Colors ═══════════════════════════════════ */
+.s-ingest .section-num{background:rgba(245,158,11,0.15);color:var(--amber);}
+.s-embed .section-num{background:rgba(168,85,247,0.15);color:var(--purple);}
+.s-retrieve .section-num{background:rgba(0,229,255,0.15);color:var(--cyan);}
+.s-generate .section-num{background:rgba(34,211,160,0.15);color:var(--green);}
+.s-security .section-num{background:rgba(239,68,68,0.15);color:var(--red);}
+
+/* ══ AI PROVIDERS HUB ═════════════════════════════════ */
+.providers-section{
+  padding:40px 20px;max-width:1500px;margin:0 auto;
+}
+.providers-title{
+  text-align:center;font-size:1.4rem;font-weight:800;
+  margin-bottom:8px;letter-spacing:-1px;
+}
+.providers-sub{
+  text-align:center;color:var(--text2);font-size:0.9rem;
+  margin-bottom:30px;
+}
+
+.providers-hub{
+  display:flex;justify-content:center;align-items:center;
+  flex-wrap:wrap;gap:20px;
+  position:relative;min-height:400px;
+}
+
+/* Center node */
+.hub-center{
+  width:160px;height:160px;
+  border-radius:50%;
+  background:radial-gradient(circle,var(--surface3),var(--surface));
+  border:2px solid var(--cyan);
+  display:grid;place-items:center;
+  position:relative;z-index:10;
+  box-shadow:0 0 40px var(--glow-cyan),0 0 80px rgba(0,229,255,0.1);
+  animation:hub-pulse 3s ease-in-out infinite;
+  cursor:pointer;
+  flex-shrink:0;
+}
+@keyframes hub-pulse{
+  0%,100%{box-shadow:0 0 30px var(--glow-cyan);}
+  50%{box-shadow:0 0 60px var(--glow-cyan),0 0 100px rgba(0,229,255,0.15);}
+}
+.hub-center .hub-icon{font-size:2.2rem;}
+.hub-center .hub-label{
+  font-size:0.7rem;font-weight:700;
+  font-family:'Fira Code',monospace;
+  color:var(--cyan);margin-top:4px;
+  text-align:center;
+}
+
+/* Provider cards */
+.provider-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:20px 16px;
+  width:170px;
+  text-align:center;
+  cursor:pointer;
+  transition:all 0.4s cubic-bezier(0.16,1,0.3,1);
+  position:relative;
+  opacity:0;transform:scale(0.8);
+}
+.provider-card.show{opacity:1;transform:scale(1);}
+.provider-card:hover{
+  transform:translateY(-8px) scale(1.05);
+  z-index:20;
+}
+.provider-card .p-icon{font-size:2rem;margin-bottom:8px;}
+.provider-card .p-name{
+  font-size:0.85rem;font-weight:700;
+  margin-bottom:4px;
+}
+.provider-card .p-model{
+  font-size:0.65rem;font-family:'Fira Code',monospace;
+  color:var(--text2);margin-bottom:8px;
+}
+.provider-card .p-status{
+  font-size:0.6rem;font-family:'Fira Code',monospace;
+  padding:3px 10px;border-radius:100px;
+  display:inline-block;
+}
+.provider-card .conn-line{
+  position:absolute;
+  width:3px;height:0;
+  transition:height 0.6s ease;
+  z-index:-1;
+}
+
+/* Provider-specific colors */
+.p-openai{--pc:var(--green);}
+.p-openai:hover{border-color:var(--green);box-shadow:0 0 30px rgba(34,211,160,0.3);}
+.p-openai .p-status{background:rgba(34,211,160,0.1);color:var(--green);}
+
+.p-anthropic{--pc:var(--amber);}
+.p-anthropic:hover{border-color:var(--amber);box-shadow:0 0 30px rgba(245,158,11,0.3);}
+.p-anthropic .p-status{background:rgba(245,158,11,0.1);color:var(--amber);}
+
+.p-google{--pc:var(--blue);}
+.p-google:hover{border-color:var(--blue);box-shadow:0 0 30px rgba(59,130,246,0.3);}
+.p-google .p-status{background:rgba(59,130,246,0.1);color:var(--blue);}
+
+.p-xai{--pc:#fff;}
+.p-xai:hover{border-color:#ccc;box-shadow:0 0 30px rgba(255,255,255,0.15);}
+.p-xai .p-status{background:rgba(255,255,255,0.06);color:#ccc;}
+
+.p-meta{--pc:var(--blue);}
+.p-meta:hover{border-color:var(--cyan);box-shadow:0 0 30px var(--glow-cyan);}
+.p-meta .p-status{background:rgba(0,229,255,0.1);color:var(--cyan);}
+
+.p-perplexity{--pc:var(--purple);}
+.p-perplexity:hover{border-color:var(--purple);box-shadow:0 0 30px var(--glow-purple);}
+.p-perplexity .p-status{background:rgba(168,85,247,0.1);color:var(--purple);}
+
+.p-ollama{--pc:var(--lime);}
+.p-ollama:hover{border-color:var(--lime);box-shadow:0 0 30px rgba(132,204,22,0.3);}
+.p-ollama .p-status{background:rgba(132,204,22,0.1);color:var(--lime);}
+
+.p-hf{--pc:var(--orange);}
+.p-hf:hover{border-color:var(--orange);box-shadow:0 0 30px rgba(249,115,22,0.3);}
+.p-hf .p-status{background:rgba(249,115,22,0.1);color:var(--orange);}
+
+/* Connection beam animation */
+.provider-card.connected{
+  border-color:var(--pc);
+  box-shadow:0 0 20px color-mix(in srgb, var(--pc) 30%, transparent);
+}
+.provider-card.connected::before{
+  content:'';position:absolute;top:-2px;left:-2px;
+  right:-2px;bottom:-2px;
+  border-radius:18px;
+  background:linear-gradient(45deg,var(--pc),transparent,var(--pc));
+  background-size:300% 300%;
+  z-index:-1;
+  animation:border-glow 3s linear infinite;
+  opacity:0.4;
+}
+@keyframes border-glow{
+  0%{background-position:0% 50%;}
+  50%{background-position:100% 50%;}
+  100%{background-position:0% 50%;}
+}
+
+/* ══ Detail Panel (popup on click) ════════════════════ */
+.detail-panel{
+  position:fixed;top:0;right:-500px;
+  width:420px;max-width:90vw;height:100vh;
+  background:var(--surface);
+  border-left:1px solid var(--border);
+  z-index:1000;
+  transition:right 0.5s cubic-bezier(0.16,1,0.3,1);
+  overflow-y:auto;padding:30px;
+  box-shadow:-10px 0 60px rgba(0,0,0,0.5);
+}
+.detail-panel.open{right:0;}
+.detail-close{
+  position:absolute;top:16px;right:16px;
+  background:none;border:1px solid var(--border);
+  color:var(--text);width:36px;height:36px;
+  border-radius:8px;cursor:pointer;
+  font-size:1.1rem;display:grid;place-items:center;
+  transition:all 0.3s;
+}
+.detail-close:hover{border-color:var(--red);color:var(--red);}
+.detail-title{font-size:1.3rem;font-weight:800;margin-bottom:4px;}
+.detail-sub{color:var(--text2);font-size:0.82rem;margin-bottom:20px;font-family:'Fira Code',monospace;}
+.detail-section{margin-bottom:20px;}
+.detail-section h3{
+  font-size:0.78rem;font-weight:600;color:var(--cyan);
+  text-transform:uppercase;letter-spacing:1px;
+  margin-bottom:8px;font-family:'Fira Code',monospace;
+}
+.detail-section p,.detail-section li{
+  font-size:0.85rem;color:var(--text2);
+  line-height:1.6;
+}
+.detail-section ul{list-style:none;padding:0;}
+.detail-section li{padding:4px 0;padding-left:16px;position:relative;}
+.detail-section li::before{content:'▸';position:absolute;left:0;color:var(--cyan);}
+.detail-code{
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:8px;padding:14px;
+  font-family:'Fira Code',monospace;
+  font-size:0.72rem;color:var(--green);
+  overflow-x:auto;margin-top:8px;
+  white-space:pre;
+}
+.detail-overlay{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,0.5);z-index:999;
+  opacity:0;pointer-events:none;
+  transition:opacity 0.3s;
+}
+.detail-overlay.open{opacity:1;pointer-events:auto;}
+
+/* ══ Stats Bar ════════════════════════════════════════ */
+.stats-bar{
+  display:flex;justify-content:center;gap:30px;
+  padding:30px 20px;flex-wrap:wrap;
+  animation:fade-in 1s 1s both;
+}
+.stat{text-align:center;}
+.stat-val{
+  font-size:1.8rem;font-weight:900;
+  font-family:'Fira Code',monospace;
+}
+.stat-label{
+  font-size:0.7rem;color:var(--text2);
+  text-transform:uppercase;letter-spacing:1px;
+}
+
+/* ══ Status Bar (bottom) ══════════════════════════════ */
+.status-bar{
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  padding:10px 24px;
+  display:flex;justify-content:space-between;
+  align-items:center;z-index:100;
+  font-family:'Fira Code',monospace;font-size:0.75rem;
+}
+.status-msg{color:var(--cyan);}
+.status-dots{display:flex;gap:5px;}
+.sdot{
+  width:10px;height:10px;border-radius:50%;
+  background:var(--border);transition:all 0.4s;
+}
+.sdot.lit{background:var(--green);box-shadow:0 0 8px var(--glow-green);}
+.sdot.active{background:var(--cyan);box-shadow:0 0 10px var(--glow-cyan);animation:dot-blink 1s infinite;}
+@keyframes dot-blink{0%,100%{transform:scale(1);}50%{transform:scale(1.5);}}
+
+/* ══ SVG connection canvas ════════════════════════════ */
+#conn-svg{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  pointer-events:none;z-index:1;
+}
+.conn-path{
+  fill:none;stroke-width:1.5;
+  stroke-dasharray:8 4;
+  opacity:0;transition:opacity 0.6s;
+}
+.conn-path.show{opacity:0.5;animation:dash-flow 2s linear infinite;}
+@keyframes dash-flow{to{stroke-dashoffset:-24;}}
+
+/* ══ Footer ═══════════════════════════════════════════ */
+.footer{
+  text-align:center;padding:30px 20px 70px;
+  color:var(--text2);font-size:0.75rem;
+  font-family:'Fira Code',monospace;
+}
+.footer a{color:var(--cyan);text-decoration:none;}
+
+/* ══ Responsive ═══════════════════════════════════════ */
+@media(max-width:900px){
+  .pipe-row{flex-wrap:wrap;}
+  .pipe-node{min-width:140px;}
+  .providers-hub{gap:12px;}
+  .provider-card{width:140px;padding:14px 12px;}
+  .hub-center{width:120px;height:120px;}
+}
+@media(max-width:600px){
+  .pipe-arrow{transform:rotate(90deg);min-width:unset;min-height:32px;}
+  .hero h1{font-size:1.6rem;}
+}
+</style>
+</head>
+<body>
+
+<!-- Background particle canvas -->
+<canvas id="bg-canvas"></canvas>
+
+<div class="content">
+
+<!-- ═══ HERO ═══════════════════════════════════════════════════════════ -->
+<div class="hero">
+  <div class="hero-badge">github.com/kennyb7322/LLLMRAG</div>
+  <h1>How <span class="grad">LLM + RAG</span> Actually Works</h1>
+  <h1 style="font-size:clamp(1rem,2.5vw,1.6rem);font-weight:400;color:var(--text2);margin-top:4px;animation:fade-in 1s 0.5s both;">
+    End-to-End Automated Deployment
+  </h1>
+  <p class="sub">
+    A fully automated framework connecting to every major AI provider — 
+    from data ingestion to secure, cited answers. One command to deploy.
+  </p>
+</div>
+
+<!-- ═══ STATS ══════════════════════════════════════════════════════════ -->
+<div class="stats-bar">
+  <div class="stat"><div class="stat-val" style="color:var(--cyan);" id="sv1">0</div><div class="stat-label">Python Modules</div></div>
+  <div class="stat"><div class="stat-val" style="color:var(--purple);" id="sv2">0</div><div class="stat-label">AI Providers</div></div>
+  <div class="stat"><div class="stat-val" style="color:var(--green);" id="sv3">0</div><div class="stat-label">Vector DBs</div></div>
+  <div class="stat"><div class="stat-val" style="color:var(--amber);" id="sv4">0</div><div class="stat-label">Tests Passing</div></div>
+  <div class="stat"><div class="stat-val" style="color:var(--pink);" id="sv5">0</div><div class="stat-label">Compliance Frameworks</div></div>
+</div>
+
+<!-- ═══ CONTROLS ═══════════════════════════════════════════════════════ -->
+<div class="controls">
+  <button class="cbtn cbtn-primary" onclick="runFull()">▶ Run Full Animation</button>
+  <button class="cbtn" onclick="animStage(0)">① Ingestion</button>
+  <button class="cbtn" onclick="animStage(1)">② Embedding</button>
+  <button class="cbtn" onclick="animStage(2)">③ Retrieval</button>
+  <button class="cbtn" onclick="animStage(3)">④ Generation</button>
+  <button class="cbtn" onclick="animStage(4)">⑤ Security</button>
+  <button class="cbtn" onclick="animProviders()">🔌 Connect Providers</button>
+  <button class="cbtn" onclick="resetAll()">↻ Reset</button>
+</div>
+
+<!-- ═══ STAGE 1 — DATA + INGESTION ════════════════════════════════════ -->
+<div class="section s-ingest" id="sec-0">
+  <div class="section-head">
+    <div class="section-num">01</div>
+    <div class="section-label">Data + Ingestion</div>
+  </div>
+  <div class="pipe-row">
+    <div class="pipe-node" id="n0-0" onclick="showDetail('sources')"><div class="icon">📦</div><div class="title">Data Sources</div><ul class="items"><li>Filesystem (PDF/DOCX/TXT)</li><li>REST APIs</li><li>SQL Databases</li><li>AWS S3 Buckets</li><li>Web Crawler</li></ul></div>
+    <div class="pipe-arrow" id="a0-0"><svg viewBox="0 0 28 28"><path d="M4 14h20M18 8l6 6-6 6"/></svg></div>
+    <div class="pipe-node" id="n0-1" onclick="showDetail('preprocess')"><div class="icon">🧹</div><div class="title">Preprocessing</div><ul class="items"><li>HTML cleaning</li><li>Deduplication (MinHash)</li><li>Structure detection</li><li>Table extraction</li><li>PII masking</li></ul></div>
+    <div class="pipe-arrow" id="a0-1"><svg viewBox="0 0 28 28"><path d="M4 14h20M18 8l6 6-6 6"/></svg></div>
+    <div class="pipe-node" id="n0-2" onclick="showDetail('chunking')"><div class="icon">✂️</div><div class="title">Chunking</div><ul class="items"><li>Semantic chunks</li><li>Recursive splitting</li><li>Sentence-aware</li><li>Overlap control</li><li>Boundary respect</li></ul></div>
+    <div class="pipe-arrow" id="a0-2"><svg viewBox="0 0 28 28"><path d="M4 14h20M18 8l6 6-6 6"/></svg></div>
+    <div class="pipe-node" id="n0-3" onclick="showDetail('enrichment')"><div class="icon">🏷️</div><div class="title">Enrichment</div><ul class="items"><li>Metadata extraction</li><li>Entity detection</li><li>Keyword generation</li><li>Summaries</li><li>Timestamps</li></ul></div>
+  </div>
+</div>
+
+<div class="v-arrow" id="va-0"><svg viewBox="0 0 28 40"><path d="M14 4v32M8 30l6 6 6-6"/></svg></div>
+
+<!-- ═══ STAGE 2 — EMBEDDING + STORAGE ═════════════════════════════════ -->
+<div class="section s-embed" id="sec-1">
+  <div class="section-head">
+    <div class="section-num">02</div>
+    <div class="section-label">Embedding + Storage</div>
+  </div>
+  <div class="pipe-row">
+    <div class="pipe-node" id="n1-0" onclick="showDetail('embedding')"><div class="icon">🧠</div><div class="title">Embedding Models</div><ul class="items"><li>OpenAI text-embedding-3</li><li>HuggingFace MiniLM</li><li>Cohere embed-v3</li><li>Local ONNX models</li><li>Batch + caching</li></ul></div>
+    <div class="pipe-arrow" id="a1-0"><svg viewBox="0 0 28 28"><path d="M4 14h20M18 8l6 6-6 6"/></svg></div>
+    <div class="pipe-node" id="n1-1" onclick="showDetail('vectordb')"><div class="icon">🗄️</div><div class="title">Vector Database</div><ul class="items"><li>ChromaDB (default)</li><li>Pinecone (managed)</li><li>pgvector (PostgreSQL)</li><li>Qdrant (high-perf)</li><li>HNSW cosine index</li></ul></div>
+    <div class="pipe-arrow" id="a1-1"><svg viewBox="0 0 28 28"><path d="M4 14h20M18 8l6 6-6 6"/></svg></div>
+    <div class="pipe-node" id="n1-2" onclick="showDetail('indexing')"><div class="icon">📑</div><div class="title">Indexing + Cache</div><ul class="items"><li>BM25 keyword index</li><li>Hybrid index</li><li>Metadata filters</li><li>Normalization</li><li>Redis cache layer</li></ul></div>
+  </div>
+</div>
+
+<div class="v-arrow" id="va-1"><svg viewBox="0 0 28 40"><path d="M14 4v32M8 30l6 6 6-6"/></svg></div>
+
+<!-- ═══ STAGE 3 — RETRIEVAL PIPELINE ══════════════════════════════════ -->
+<div class="section s-retrieve" id="sec-2">
+  <div class="section-head">
+    <div class="section-num">03</div>
+    <div class="section-label">Retrieval Pipeline</div>
+  </div>
+  <div class="pipe-row">
+    <div class="pipe-node" id="n2-0" onclick="showDetail('query')"><div class="icon">💬</div><div class="title">User Query</div><ul class="items"><li>Question input</li><li>Chat history</li><li>Metadata filters</li></ul></div>
+    <div class="pipe-arrow" id="a2-0"><svg viewBox="0 0 28 28"><path d="M4 14h20M18 8l6 6-6 6"/></svg></div>
+    <div class="pipe-node" id="n2-1" onclick="showDetail('understanding')"><div class="icon">🔍</div><div class="title">Query Understanding</div><ul class="items"><li>Rewrite query</li><li>Entity detection</li><li>Intent classification</li><li>Query expansion</li><li>Time awareness</li></ul></div>
+    <div class="pipe-arrow" id="a2-1"><svg viewBox="0 0 28 28"><path d="M4 14h20M18 8l6 6-6 6"/></svg></div>
+    <div class="pipe-node" id="n2-2" onclick="showDetail('search')"><div class="icon">🔎</div><div class="title">Multi-Search</div><ul class="items"><li>Vector search (ANN)</li><li>Keyword search (BM25)</li><li>Hybrid retrieval</li><li>Metadata filtering</li></ul></div>
+    <div class="pipe-arrow" id="a2-2"><svg viewBox="0 0 28 28"><path d="M4 14h20M18 8l6 6-6 6"/></svg></div>
+    <div class="pipe-node" id="n2-3" onclick="showDetail('postretrieval')"><div class="icon">⭐</div><div class="title">Post-Retrieval</div><ul class="items"><li>Cross-encoder reranking</li><li>Deduplication</li><li>Context compression</li><li>Chunk stitching</li><li>Permission filtering</li></ul></div>
+  </div>
+</div>
+
+<div class="v-arrow" id="va-2"><svg viewBox="0 0 28 40"><path d="M14 4v32M8 30l6 6 6-6"/></svg></div>
+
+<!-- ═══ STAGE 4 — GENERATION + OUTPUT ═════════════════════════════════ -->
+<div class="section s-generate" id="sec-3">
+  <div class="section-head">
+    <div class="section-num">04</div>
+    <div class="section-label">Generation + Output</div>
+  </div>
+  <div class="pipe-row">
+    <div class="pipe-node" id="n3-0" onclick="showDetail('context')"><div class="icon">📋</div><div class="title">Context Assembly</div><ul class="items"><li>Top chunks ranked</li><li>Token budget mgmt</li><li>Ordering strategy</li><li>Citation mapping</li></ul></div>
+    <div class="pipe-arrow" id="a3-0"><svg viewBox="0 0 28 28"><path d="M4 14h20M18 8l6 6-6 6"/></svg></div>
+    <div class="pipe-node" id="n3-1" onclick="showDetail('prompt')"><div class="icon">📝</div><div class="title">Prompt Construction</div><ul class="items"><li>System prompt</li><li>User query</li><li>Retrieved context</li><li>Safety guardrails</li></ul></div>
+    <div class="pipe-arrow" id="a3-1"><svg viewBox="0 0 28 28"><path d="M4 14h20M18 8l6 6-6 6"/></svg></div>
+    <div class="pipe-node" id="n3-2" onclick="showDetail('llm')"><div class="icon">🤖</div><div class="title">LLM Inference</div><ul class="items"><li>Grounded generation</li><li>Reasoning chain</li><li>Confidence scoring</li><li>Low-conf refusal</li></ul></div>
+    <div class="pipe-arrow" id="a3-2"><svg viewBox="0 0 28 28"><path d="M4 14h20M18 8l6 6-6 6"/></svg></div>
+    <div class="pipe-node" id="n3-3" onclick="showDetail('output')"><div class="icon">✅</div><div class="title">Final Output</div><ul class="items"><li>Answer text</li><li>Citations [1][2]</li><li>Source references</li><li>Confidence %</li></ul></div>
+  </div>
+</div>
+
+<div class="v-arrow" id="va-3"><svg viewBox="0 0 28 40"><path d="M14 4v32M8 30l6 6 6-6"/></svg></div>
+
+<!-- ═══ STAGE 5 — SECURITY / GOVERNANCE ═══════════════════════════════ -->
+<div class="section s-security" id="sec-4">
+  <div class="section-head">
+    <div class="section-num">05</div>
+    <div class="section-label">Security / Governance / Observability</div>
+  </div>
+  <div class="pipe-row">
+    <div class="pipe-node" id="n4-0" onclick="showDetail('auth')"><div class="icon">🔐</div><div class="title">Authentication</div><ul class="items"><li>API key management</li><li>JWT / OAuth2</li><li>RBAC (admin/user/reader)</li></ul></div>
+    <div class="pipe-arrow" id="a4-0"><svg viewBox="0 0 28 28"><path d="M4 14h20M18 8l6 6-6 6"/></svg></div>
+    <div class="pipe-node" id="n4-1" onclick="showDetail('protection')"><div class="icon">🛡️</div><div class="title">Data Protection</div><ul class="items"><li>Encryption at rest</li><li>Encryption in transit</li><li>PII auto-masking</li><li>ACL filtering</li></ul></div>
+    <div class="pipe-arrow" id="a4-1"><svg viewBox="0 0 28 28"><path d="M4 14h20M18 8l6 6-6 6"/></svg></div>
+    <div class="pipe-node" id="n4-2" onclick="showDetail('compliance')"><div class="icon">📊</div><div class="title">Audit + Compliance</div><ul class="items"><li>Query/response logging</li><li>HIPAA / SOC2 / GDPR</li><li>FedRAMP / PCI-DSS</li><li>Data retention policy</li></ul></div>
+    <div class="pipe-arrow" id="a4-2"><svg viewBox="0 0 28 28"><path d="M4 14h20M18 8l6 6-6 6"/></svg></div>
+    <div class="pipe-node" id="n4-3" onclick="showDetail('evaluation')"><div class="icon">📈</div><div class="title">RAG Evaluation</div><ul class="items"><li>Faithfulness scoring</li><li>Relevancy metrics</li><li>Context precision</li><li>Feedback loop</li></ul></div>
+  </div>
+</div>
+
+<!-- ═══ AI PROVIDERS HUB ══════════════════════════════════════════════ -->
+<div class="providers-section">
+  <div class="providers-title">Connected AI Frameworks</div>
+  <div class="providers-sub">Plug-and-play with every major LLM provider — swap with one config change</div>
+
+  <div class="providers-hub" id="providers-hub">
+    <div class="provider-card p-openai" id="pc-openai" onclick="showDetail('d-openai')">
+      <div class="p-icon">🟢</div>
+      <div class="p-name">OpenAI / ChatGPT</div>
+      <div class="p-model">gpt-4o · gpt-4o-mini</div>
+      <div class="p-status">LLM + Embed</div>
+    </div>
+
+    <div class="provider-card p-anthropic" id="pc-anthropic" onclick="showDetail('d-anthropic')">
+      <div class="p-icon">🟠</div>
+      <div class="p-name">Anthropic / Claude</div>
+      <div class="p-model">claude-sonnet-4 · opus-4</div>
+      <div class="p-status">LLM</div>
+    </div>
+
+    <div class="provider-card p-google" id="pc-google" onclick="showDetail('d-google')">
+      <div class="p-icon">🔵</div>
+      <div class="p-name">Google / Gemini</div>
+      <div class="p-model">gemini-2.5-pro · flash</div>
+      <div class="p-status">LLM + Embed</div>
+    </div>
+
+    <div class="hub-center" onclick="showDetail('hub')">
+      <div class="hub-icon">🧬</div>
+      <div class="hub-label">LLLMRAG<br>PIPELINE</div>
+    </div>
+
+    <div class="provider-card p-xai" id="pc-xai" onclick="showDetail('d-xai')">
+      <div class="p-icon">⚡</div>
+      <div class="p-name">xAI / Grok</div>
+      <div class="p-model">grok-3 · grok-3-mini</div>
+      <div class="p-status">LLM</div>
+    </div>
+
+    <div class="provider-card p-meta" id="pc-meta" onclick="showDetail('d-meta')">
+      <div class="p-icon">🦙</div>
+      <div class="p-name">Meta / Llama</div>
+      <div class="p-model">llama-4 · llama-3.3</div>
+      <div class="p-status">Local LLM</div>
+    </div>
+
+    <div class="provider-card p-perplexity" id="pc-perplexity" onclick="showDetail('d-perplexity')">
+      <div class="p-icon">🟣</div>
+      <div class="p-name">Perplexity</div>
+      <div class="p-model">sonar-pro · sonar</div>
+      <div class="p-status">Search + LLM</div>
+    </div>
+
+    <div class="provider-card p-ollama" id="pc-ollama" onclick="showDetail('d-ollama')">
+      <div class="p-icon">🫒</div>
+      <div class="p-name">Ollama (Local)</div>
+      <div class="p-model">llama3 · mistral · phi3</div>
+      <div class="p-status">100% Local</div>
+    </div>
+
+    <div class="provider-card p-hf" id="pc-hf" onclick="showDetail('d-hf')">
+      <div class="p-icon">🤗</div>
+      <div class="p-name">HuggingFace</div>
+      <div class="p-model">MiniLM · mpnet · BGE</div>
+      <div class="p-status">Embed + Rerank</div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  LLLMRAG v1.0 — <a href="https://github.com/kennyb7322/LLLMRAG">github.com/kennyb7322/LLLMRAG</a> — Ken Barnes / UCS Solutions — 2025
+</div>
+
+</div><!-- /content -->
+
+<!-- ═══ DETAIL PANEL ══════════════════════════════════════════════════ -->
+<div class="detail-overlay" id="detail-overlay" onclick="closeDetail()"></div>
+<div class="detail-panel" id="detail-panel">
+  <button class="detail-close" onclick="closeDetail()">✕</button>
+  <div id="detail-content"></div>
+</div>
+
+<!-- ═══ STATUS BAR ════════════════════════════════════════════════════ -->
+<div class="status-bar">
+  <div class="status-msg" id="status-msg">Ready — click ▶ Run Full Animation</div>
+  <div class="status-dots">
+    <div class="sdot" id="sd0"></div>
+    <div class="sdot" id="sd1"></div>
+    <div class="sdot" id="sd2"></div>
+    <div class="sdot" id="sd3"></div>
+    <div class="sdot" id="sd4"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// LLLMRAG ANIMATION ENGINE
+// ═══════════════════════════════════════════════════════════════════════
+
+const STAGES = 5;
+const NODES_PER_STAGE = [[0,1,2,3],[0,1,2],[0,1,2,3],[0,1,2,3],[0,1,2,3]];
+const STATUS = [
+  '📥 Stage 1 — Ingesting data sources → preprocessing → chunking → enrichment...',
+  '🧠 Stage 2 — Embedding chunks → vectorizing → storing in databases...',
+  '🔍 Stage 3 — Processing query → understanding → multi-search → reranking...',
+  '✨ Stage 4 — Assembling context → building prompt → LLM inference → output...',
+  '🔐 Stage 5 — Authentication → encryption → audit logging → compliance check...',
+];
+
+let running = false;
+let timer = null;
+
+function sleep(ms) { return new Promise(r => { timer = setTimeout(r, ms); }); }
+
+function setStatus(t) { document.getElementById('status-msg').textContent = t; }
+function setDot(i, cls) { document.getElementById('sd' + i).className = 'sdot' + (cls ? ' ' + cls : ''); }
+
+function resetAll() {
+  if (timer) clearTimeout(timer);
+  running = false;
+  document.querySelectorAll('.pipe-node').forEach(n => {
+    n.classList.remove('show', 'glow', 'done');
+    n.querySelectorAll('.items li').forEach(li => li.classList.remove('lit'));
+  });
+  document.querySelectorAll('.pipe-arrow, .v-arrow').forEach(a => a.classList.remove('show'));
+  document.querySelectorAll('.provider-card').forEach(c => c.classList.remove('show', 'connected'));
+  for (let i = 0; i < 5; i++) setDot(i, '');
+  ['sv1','sv2','sv3','sv4','sv5'].forEach(id => { document.getElementById(id).textContent = '0'; });
+  setStatus('Ready — click ▶ Run Full Animation');
+}
+
+async function animNode(s, n, delay = 250) {
+  if (!running) return;
+  const node = document.getElementById(`n${s}-${n}`);
+  node.classList.add('show', 'glow');
+  await sleep(delay);
+  const items = node.querySelectorAll('.items li');
+  for (const li of items) {
+    if (!running) return;
+    li.classList.add('lit');
+    await sleep(80);
+  }
+  node.classList.remove('glow');
+  node.classList.add('done');
+}
+
+async function showArrow(id) {
+  if (!running) return;
+  const el = document.getElementById(id);
+  if (el) el.classList.add('show');
+  await sleep(150);
+}
+
+async function animateStage(s) {
+  if (!running) return;
+  setStatus(STATUS[s]);
+  setDot(s, 'active');
+
+  if (s > 0) await showArrow(`va-${s - 1}`);
+
+  const nodes = NODES_PER_STAGE[s];
+  for (let i = 0; i < nodes.length; i++) {
+    if (!running) return;
+    await animNode(s, nodes[i], 300);
+    if (i < nodes.length - 1) {
+      await showArrow(`a${s}-${i}`);
+    }
+  }
+
+  setDot(s, 'lit');
+  await sleep(300);
+}
+
+async function animStage(s) {
+  resetAll();
+  running = true;
+  await animateStage(s);
+  running = false;
+  setStatus(`✅ Stage ${s + 1} complete`);
+}
+
+// Counter animation
+function animateCounter(id, target, duration = 1500) {
+  const el = document.getElementById(id);
+  const start = 0;
+  const startTime = performance.now();
+  function tick(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(start + (target - start) * eased);
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+async function animProviders() {
+  const cards = document.querySelectorAll('.provider-card');
+  for (const card of cards) {
+    card.classList.add('show');
+    await sleep(150);
+  }
+  await sleep(300);
+  for (const card of cards) {
+    card.classList.add('connected');
+    await sleep(100);
+  }
+  setStatus('🔌 All AI providers connected and ready');
+}
+
+async function runFull() {
+  resetAll();
+  running = true;
+  setStatus('🚀 Initializing LLLMRAG pipeline...');
+  await sleep(500);
+
+  // Animate counters
+  animateCounter('sv1', 12, 2000);
+  animateCounter('sv2', 8, 2000);
+  animateCounter('sv3', 4, 2000);
+  animateCounter('sv4', 22, 2000);
+  animateCounter('sv5', 5, 2000);
+
+  // Stages
+  for (let s = 0; s < STAGES; s++) {
+    if (!running) return;
+    await animateStage(s);
+  }
+
+  // Providers
+  if (!running) return;
+  setStatus('🔌 Connecting AI provider frameworks...');
+  await sleep(400);
+  const cards = document.querySelectorAll('.provider-card');
+  for (const card of cards) {
+    if (!running) return;
+    card.classList.add('show');
+    await sleep(120);
+  }
+  await sleep(300);
+  for (const card of cards) {
+    if (!running) return;
+    card.classList.add('connected');
+    await sleep(80);
+  }
+
+  await sleep(500);
+  setStatus('✅ LLLMRAG Pipeline — All Systems Operational — 8 AI Providers Connected');
+  running = false;
+}
+
+// ═══ DETAIL PANEL DATA ═══════════════════════════════════════════════
+
+const DETAILS = {
+  sources: { title: '📦 Data Sources', sub: 'src/ingestion/engine.py', html: '<div class="detail-section"><h3>Supported Sources</h3><ul><li><strong>Filesystem</strong> — PDF, DOCX, TXT, MD, HTML, CSV, JSON with recursive scanning</li><li><strong>REST APIs</strong> — Bearer/API key auth, paginated batch fetching</li><li><strong>SQL Databases</strong> — PostgreSQL, MySQL, MSSQL, Oracle via SQLAlchemy</li><li><strong>AWS S3</strong> — Paginated bucket listing with prefix filtering</li><li><strong>Web Crawler</strong> — robots.txt respect, rate limiting, depth control</li></ul></div><div class="detail-section"><h3>Config</h3><div class="detail-code">ingestion:\n  sources:\n    - type: filesystem\n      path: ./data/documents\n      formats: [pdf, docx, txt]\n      recursive: true</div></div>' },
+  preprocess: { title: '🧹 Preprocessing', sub: 'Cleaning → Dedup → PII Masking', html: '<div class="detail-section"><h3>Pipeline</h3><ul><li><strong>HTML Cleaning</strong> — Strip all HTML tags</li><li><strong>Whitespace Normalization</strong> — Collapse multiple spaces/newlines</li><li><strong>Deduplication</strong> — MD5 hash-based exact matching</li><li><strong>PII Masking</strong> — Auto-detect and mask SSNs, credit cards, emails, phones</li><li><strong>Min Length Filter</strong> — Drop content below threshold</li></ul></div>' },
+  chunking: { title: '✂️ Chunking Strategies', sub: '4 configurable strategies', html: '<div class="detail-section"><h3>Strategies</h3><ul><li><strong>Semantic</strong> — Split on paragraph boundaries, merge small segments</li><li><strong>Recursive</strong> — Hierarchical: paragraphs → sentences → words</li><li><strong>Sentence</strong> — Split at sentence boundaries</li><li><strong>Fixed</strong> — Character windows with configurable overlap</li></ul></div><div class="detail-section"><h3>Config</h3><div class="detail-code">chunking:\n  strategy: semantic\n  chunk_size: 512\n  chunk_overlap: 50\n  respect_boundaries: true</div></div>' },
+  enrichment: { title: '🏷️ Enrichment', sub: 'Metadata + entities + keywords', html: '<div class="detail-section"><h3>Enrichment Features</h3><ul><li>Metadata extraction (filename, size, timestamps)</li><li>Named entity detection (names, dates, organizations)</li><li>TF-based keyword extraction (top 10 terms)</li><li>Word/character counts</li><li>Optional LLM-powered summaries</li></ul></div>' },
+  embedding: { title: '🧠 Embedding Models', sub: '4 providers supported', html: '<div class="detail-section"><h3>Providers</h3><ul><li><strong>OpenAI</strong> — text-embedding-3-small/large (1536/3072 dims)</li><li><strong>HuggingFace</strong> — Any sentence-transformer model</li><li><strong>Cohere</strong> — embed-english-v3.0, multilingual</li><li><strong>Local</strong> — ONNX/PyTorch models on disk</li></ul></div><div class="detail-section"><h3>Features</h3><ul><li>Batch processing with configurable batch size</li><li>In-memory embedding cache (MD5-keyed)</li><li>Auto-retry on failures</li></ul></div>' },
+  vectordb: { title: '🗄️ Vector Databases', sub: '4 backends supported', html: '<div class="detail-section"><h3>Supported Backends</h3><ul><li><strong>ChromaDB</strong> — Local persistent, cosine/L2, zero-config default</li><li><strong>Pinecone</strong> — Managed cloud, auto-scaling, metadata filtering</li><li><strong>pgvector</strong> — PostgreSQL extension, SQL-native</li><li><strong>Qdrant</strong> — High-performance, rich filtering, hybrid search</li></ul></div>' },
+  postretrieval: { title: '⭐ Post-Retrieval', sub: 'The stage most people skip', html: '<div class="detail-section"><h3>Processing Steps</h3><ul><li><strong>Cross-Encoder Reranking</strong> — ms-marco-MiniLM for precise relevance</li><li><strong>Deduplication</strong> — Remove near-duplicate chunks</li><li><strong>Context Compression</strong> — Keep only query-relevant sentences</li><li><strong>Chunk Stitching</strong> — Merge adjacent chunks from same document</li><li><strong>Permission Filtering</strong> — ACL-based access control at retrieval</li></ul></div>' },
+  llm: { title: '🤖 LLM Inference', sub: 'Multi-provider with guardrails', html: '<div class="detail-section"><h3>Supported LLMs</h3><ul><li><strong>OpenAI</strong> — GPT-4o, GPT-4o-mini, GPT-4-turbo</li><li><strong>Anthropic</strong> — Claude Sonnet 4, Claude Opus 4</li><li><strong>Google</strong> — Gemini 2.5 Pro, Gemini Flash</li><li><strong>xAI</strong> — Grok-3, Grok-3-mini</li><li><strong>Meta</strong> — Llama 4, Llama 3.3 (via Ollama)</li><li><strong>Ollama</strong> — Any local model (Mistral, Phi, etc.)</li><li><strong>Perplexity</strong> — Sonar Pro (search-augmented)</li></ul></div><div class="detail-section"><h3>Guardrails</h3><ul><li>Low-confidence refusal (configurable threshold)</li><li>Hallucination scoring</li><li>Content filtering</li></ul></div>' },
+  'compliance': { title: '📊 Compliance', sub: '5 frameworks supported', html: '<div class="detail-section"><h3>Frameworks</h3><ul><li><strong>HIPAA</strong> — PII masking, encryption, audit, access controls, retention</li><li><strong>SOC2</strong> — Encryption, audit logging, access controls</li><li><strong>GDPR</strong> — PII masking, right-to-delete, consent, retention</li><li><strong>FedRAMP</strong> — Full encryption, audit, access, continuous monitoring</li><li><strong>PCI-DSS</strong> — Payment data protection, network security</li></ul></div><div class="detail-section"><h3>Run a Check</h3><div class="detail-code">python main.py compliance\n\nHIPAA: 100%\n  ✅ pii_masking_enabled\n  ✅ encryption_at_rest\n  ✅ audit_logging\n  ✅ access_controls\n  ✅ data_retention_policy</div></div>' },
+  'd-openai': { title: '🟢 OpenAI / ChatGPT', sub: 'LLM + Embedding Provider', html: '<div class="detail-section"><h3>Integration</h3><ul><li><strong>LLM:</strong> GPT-4o, GPT-4o-mini, GPT-4-turbo</li><li><strong>Embeddings:</strong> text-embedding-3-small (1536d), text-embedding-3-large (3072d)</li><li><strong>Auth:</strong> API key via OPENAI_API_KEY env var</li></ul></div><div class="detail-section"><h3>Config</h3><div class="detail-code">generation:\n  llm:\n    provider: openai\n    model: gpt-4o-mini\n    temperature: 0.1\nembedding:\n  model:\n    provider: openai\n    name: text-embedding-3-small</div></div>' },
+  'd-anthropic': { title: '🟠 Anthropic / Claude', sub: 'LLM Provider', html: '<div class="detail-section"><h3>Integration</h3><ul><li><strong>LLM:</strong> Claude Sonnet 4, Claude Opus 4</li><li><strong>Auth:</strong> API key via ANTHROPIC_API_KEY env var</li><li><strong>Features:</strong> Extended thinking, tool use, citations</li></ul></div><div class="detail-section"><h3>Config</h3><div class="detail-code">generation:\n  llm:\n    provider: anthropic\n    anthropic:\n      model: claude-sonnet-4-20250514</div></div>' },
+  'd-google': { title: '🔵 Google / Gemini', sub: 'LLM + Embedding Provider', html: '<div class="detail-section"><h3>Integration</h3><ul><li><strong>LLM:</strong> Gemini 2.5 Pro, Gemini 2.5 Flash</li><li><strong>Embeddings:</strong> text-embedding-004</li><li><strong>Features:</strong> Long context (1M tokens), multimodal</li></ul></div>' },
+  'd-xai': { title: '⚡ xAI / Grok', sub: 'LLM Provider', html: '<div class="detail-section"><h3>Integration</h3><ul><li><strong>LLM:</strong> Grok-3, Grok-3-mini</li><li><strong>API:</strong> OpenAI-compatible endpoint</li><li><strong>Features:</strong> Real-time data, reasoning mode</li></ul></div>' },
+  'd-meta': { title: '🦙 Meta / Llama', sub: 'Local LLM via Ollama', html: '<div class="detail-section"><h3>Integration</h3><ul><li><strong>Models:</strong> Llama 4 Scout, Llama 3.3 70B, Llama 3.1 8B</li><li><strong>Runtime:</strong> Ollama (local) or llama-cpp-python</li><li><strong>Features:</strong> 100% local, no API key needed, GPU acceleration</li></ul></div>' },
+  'd-perplexity': { title: '🟣 Perplexity', sub: 'Search-Augmented LLM', html: '<div class="detail-section"><h3>Integration</h3><ul><li><strong>Models:</strong> Sonar Pro, Sonar</li><li><strong>API:</strong> OpenAI-compatible endpoint</li><li><strong>Features:</strong> Built-in web search, real-time data, citations</li></ul></div>' },
+  'd-ollama': { title: '🫒 Ollama (Local)', sub: '100% Local LLM Server', html: '<div class="detail-section"><h3>Integration</h3><ul><li><strong>Models:</strong> Llama3, Mistral, Mixtral, Phi3, Gemma, CodeLlama</li><li><strong>Runtime:</strong> Self-hosted, Docker-ready</li><li><strong>Features:</strong> Zero API cost, full data privacy, GPU/CPU</li></ul></div><div class="detail-section"><h3>Quick Start</h3><div class="detail-code">docker-compose --profile local-llm up -d\ndocker exec lllmrag-ollama ollama pull llama3\n\n# Config:\ngeneration:\n  llm:\n    provider: ollama\n    ollama:\n      base_url: http://localhost:11434\n      model: llama3</div></div>' },
+  'd-hf': { title: '🤗 HuggingFace', sub: 'Embedding + Reranking', html: '<div class="detail-section"><h3>Integration</h3><ul><li><strong>Embeddings:</strong> all-MiniLM-L6-v2, all-mpnet-base-v2, BGE-small</li><li><strong>Reranking:</strong> cross-encoder/ms-marco-MiniLM-L-6-v2</li><li><strong>Features:</strong> Local models, no API key, GPU/CPU</li></ul></div>' },
+  hub: { title: '🧬 LLLMRAG Pipeline Hub', sub: 'Unified Provider Abstraction', html: '<div class="detail-section"><h3>Architecture</h3><p>LLLMRAG provides a unified abstraction layer that lets you swap between any AI provider with a single config change. No code changes required.</p></div><div class="detail-section"><h3>Swap Provider</h3><div class="detail-code"># Switch from OpenAI to Claude:\ngeneration:\n  llm:\n    provider: anthropic  # was: openai\n\n# Switch to local (no API key!):\ngeneration:\n  llm:\n    provider: ollama\n    ollama:\n      model: llama3</div></div>' },
+};
+
+// Add generic details for any missing keys
+['indexing','query','understanding','search','context','prompt','output','auth','protection','evaluation'].forEach(k => {
+  if (!DETAILS[k]) DETAILS[k] = { title: '📄 Details', sub: 'Component info', html: '<div class="detail-section"><p>Click any pipeline node or provider card for detailed configuration and integration documentation.</p></div>' };
+});
+
+function showDetail(key) {
+  const d = DETAILS[key] || DETAILS.hub;
+  document.getElementById('detail-content').innerHTML =
+    `<div class="detail-title">${d.title}</div>` +
+    `<div class="detail-sub">${d.sub}</div>` +
+    d.html;
+  document.getElementById('detail-panel').classList.add('open');
+  document.getElementById('detail-overlay').classList.add('open');
+}
+function closeDetail() {
+  document.getElementById('detail-panel').classList.remove('open');
+  document.getElementById('detail-overlay').classList.remove('open');
+}
+
+// ═══ BACKGROUND PARTICLES ════════════════════════════════════════════
+
+(function initBgCanvas() {
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+  let w, h;
+  const particles = [];
+  const PARTICLE_COUNT = 60;
+
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    particles.push({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4,
+      r: Math.random() * 2 + 0.5,
+      color: ['#00e5ff', '#a855f7', '#22d3a0', '#3b82f6'][Math.floor(Math.random() * 4)],
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    
+    // Draw connections
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 150) {
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = `rgba(0,229,255,${0.06 * (1 - dist / 150)})`;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Draw particles
+    for (const p of particles) {
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < 0 || p.x > w) p.vx *= -1;
+      if (p.y < 0 || p.y > h) p.vy *= -1;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = 0.4;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// Auto-start
+window.addEventListener('load', () => {
+  setTimeout(() => runFull(), 1200);
+});
+</script>
+</body>
+</html>

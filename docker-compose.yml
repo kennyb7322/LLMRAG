@@ -1,0 +1,75 @@
+# ============================================================================
+# LLMRAG Docker Compose — Full Stack
+# ============================================================================
+
+version: "3.9"
+
+services:
+  # ── LLMRAG API Server ──────────────────────────────────────────────────
+  llmrag:
+    build: .
+    container_name: llmrag-api
+    ports:
+      - "8000:8000"
+    environment:
+      - LLMRAG_CONFIG=/app/configs/pipeline_config.yaml
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - LLMRAG_API_KEY=${LLMRAG_API_KEY:-}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./configs:/app/configs
+      - ./models:/app/models
+    depends_on:
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Redis Cache ─────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: llmrag-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # ── Ollama (Local LLM — optional) ──────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: llmrag-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    profiles:
+      - local-llm
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # ── Prometheus Metrics (optional) ──────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: llmrag-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
+    profiles:
+      - monitoring
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  ollama_data:

@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLMRAG — End-to-End RAG Pipeline Animation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Space+Grotesk:wght@300;400;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1e293b;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --accent1: #06b6d4;
+    --accent2: #8b5cf6;
+    --accent3: #f59e0b;
+    --accent4: #10b981;
+    --accent5: #ef4444;
+    --accent6: #3b82f6;
+    --glow1: rgba(6,182,212,0.3);
+    --glow2: rgba(139,92,246,0.3);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* ── Header ─────────────────────────────────────────── */
+  .header {
+    text-align: center;
+    padding: 40px 20px 20px;
+    position: relative;
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent1), transparent);
+  }
+  .header h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent1), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
+  }
+  .header .subtitle {
+    color: var(--text-dim);
+    font-size: 0.95rem;
+    margin-top: 8px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── Controls ───────────────────────────────────────── */
+  .controls {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    padding: 20px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    transition: all 0.3s;
+  }
+  .btn:hover {
+    background: var(--accent1);
+    color: var(--bg);
+    border-color: var(--accent1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px var(--glow1);
+  }
+  .btn.active {
+    background: var(--accent2);
+    border-color: var(--accent2);
+    color: white;
+    box-shadow: 0 4px 20px var(--glow2);
+  }
+  .btn-play {
+    background: linear-gradient(135deg, var(--accent4), var(--accent1));
+    border: none;
+    font-weight: 600;
+  }
+  .btn-play:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 30px rgba(16,185,129,0.4);
+  }
+
+  /* ── Pipeline Canvas ────────────────────────────────── */
+  .pipeline-wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+    position: relative;
+  }
+
+  .pipeline-layer {
+    margin-bottom: 24px;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .pipeline-layer.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .layer-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .layer-badge {
+    padding: 4px 14px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .layer-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-dim);
+  }
+
+  .layer-content {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+    flex-wrap: wrap;
+    position: relative;
+  }
+
+  /* ── Node Boxes ─────────────────────────────────────── */
+  .node {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    min-width: 160px;
+    flex: 1;
+    position: relative;
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  .node.active {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .node.highlight {
+    box-shadow: 0 0 25px var(--glow1);
+    border-color: var(--accent1);
+  }
+  .node.processing {
+    animation: pulse-node 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse-node {
+    0%, 100% { box-shadow: 0 0 5px var(--glow1); }
+    50% { box-shadow: 0 0 30px var(--glow1), 0 0 60px rgba(6,182,212,0.1); }
+  }
+  .node.done {
+    border-color: var(--accent4);
+    box-shadow: 0 0 15px rgba(16,185,129,0.2);
+  }
+  .node-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .node-items {
+    list-style: none;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .node-items li {
+    padding: 2px 0;
+    position: relative;
+    padding-left: 12px;
+    transition: color 0.3s;
+  }
+  .node-items li::before {
+    content: '›';
+    position: absolute;
+    left: 0;
+    color: var(--accent1);
+  }
+  .node-items li.lit {
+    color: var(--accent1);
+  }
+
+  /* ── Arrows ─────────────────────────────────────────── */
+  .arrow-h {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 36px;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .arrow-h.visible { opacity: 1; }
+  .arrow-h svg { width: 24px; height: 24px; }
+  .arrow-h path {
+    stroke: var(--accent1);
+    stroke-width: 2;
+    fill: none;
+    stroke-dasharray: 30;
+    stroke-dashoffset: 30;
+    transition: stroke-dashoffset 0.6s ease;
+  }
+  .arrow-h.visible path { stroke-dashoffset: 0; }
+
+  .arrow-v {
+    display: flex;
+    justify-content: center;
+    padding: 6px 0;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .arrow-v.visible { opacity: 1; }
+  .arrow-v svg { width: 24px; height: 36px; }
+  .arrow-v path {
+    stroke: var(--accent2);
+    stroke-width: 2;
+    fill: none;
+    stroke-dasharray: 40;
+    stroke-dashoffset: 40;
+    transition: stroke-dashoffset 0.6s ease;
+  }
+  .arrow-v.visible path { stroke-dashoffset: 0; }
+
+  /* ── Color Schemes per Layer ────────────────────────── */
+  .layer-ingest .layer-badge { background: rgba(245,158,11,0.2); color: var(--accent3); }
+  .layer-ingest .node.highlight { border-color: var(--accent3); box-shadow: 0 0 25px rgba(245,158,11,0.3); }
+
+  .layer-embed .layer-badge { background: rgba(139,92,246,0.2); color: var(--accent2); }
+  .layer-embed .node.highlight { border-color: var(--accent2); box-shadow: 0 0 25px var(--glow2); }
+
+  .layer-retrieve .layer-badge { background: rgba(6,182,212,0.2); color: var(--accent1); }
+
+  .layer-generate .layer-badge { background: rgba(16,185,129,0.2); color: var(--accent4); }
+  .layer-generate .node.highlight { border-color: var(--accent4); box-shadow: 0 0 25px rgba(16,185,129,0.3); }
+
+  .layer-security .layer-badge { background: rgba(239,68,68,0.2); color: var(--accent5); }
+  .layer-security .node.highlight { border-color: var(--accent5); box-shadow: 0 0 25px rgba(239,68,68,0.3); }
+
+  /* ── Callout Annotations ────────────────────────────── */
+  .callout {
+    position: absolute;
+    background: rgba(245,158,11,0.1);
+    border: 1px dashed var(--accent3);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.7rem;
+    color: var(--accent3);
+    font-family: 'JetBrains Mono', monospace;
+    opacity: 0;
+    transition: opacity 0.4s;
+    white-space: nowrap;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .callout.visible { opacity: 1; }
+
+  /* ── Data Flow Particles ────────────────────────────── */
+  .particle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent1);
+    box-shadow: 0 0 8px var(--accent1);
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  /* ── Status Bar ─────────────────────────────────────── */
+  .status-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    z-index: 100;
+  }
+  .status-text {
+    color: var(--accent1);
+    transition: color 0.3s;
+  }
+  .status-progress {
+    display: flex;
+    gap: 4px;
+  }
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.4s;
+  }
+  .status-dot.lit { background: var(--accent4); box-shadow: 0 0 8px rgba(16,185,129,0.5); }
+  .status-dot.current { background: var(--accent1); box-shadow: 0 0 8px var(--glow1); animation: pulse-dot 1s infinite; }
+  @keyframes pulse-dot {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.4); }
+  }
+
+  /* ── Responsive ─────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .layer-content { flex-direction: column; }
+    .arrow-h { transform: rotate(90deg); width: auto; height: 36px; }
+    .node { min-width: unset; }
+    .header h1 { font-size: 1.5rem; }
+  }
+
+  /* ── Notification ───────────────────────────────────── */
+  .note-banner {
+    text-align: center;
+    padding: 8px;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    opacity: 0.6;
+  }
+  .note-banner a { color: var(--accent1); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🧬 LLMRAG Pipeline</h1>
+  <div class="subtitle">How RAG Actually Works — End to End (Automated)</div>
+</div>
+
+<div class="controls">
+  <button class="btn btn-play" onclick="runFullAnimation()">▶ Run Full Animation</button>
+  <button class="btn" onclick="animateLayer('ingest')">Data + Ingestion</button>
+  <button class="btn" onclick="animateLayer('embed')">Embedding + Storage</button>
+  <button class="btn" onclick="animateLayer('retrieve')">Retrieval Pipeline</button>
+  <button class="btn" onclick="animateLayer('generate')">Generation + Output</button>
+  <button class="btn" onclick="animateLayer('security')">Security Layer</button>
+  <button class="btn" onclick="resetAll()">↻ Reset</button>
+</div>
+
+<div class="pipeline-wrap">
+
+  <!-- ═══ LAYER 1: DATA + INGESTION ══════════════════════════════════ -->
+  <div class="pipeline-layer layer-ingest" id="layer-ingest">
+    <div class="layer-header">
+      <span class="layer-badge">STAGE 1</span>
+      <span class="layer-title">Data + Ingestion</span>
+    </div>
+    <div class="layer-content">
+      <div class="node" id="n-sources">
+        <div class="node-title">📦 Data Sources</div>
+        <ul class="node-items">
+          <li>Filesystem (PDF/DOCX/TXT)</li>
+          <li>REST APIs</li>
+          <li>SQL Databases</li>
+          <li>AWS S3 Buckets</li>
+          <li>Web Crawler</li>
+        </ul>
+      </div>
+      <div class="arrow-h" id="a1"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="node" id="n-preprocess">
+        <div class="node-title">🧹 Preprocessing</div>
+        <ul class="node-items">
+          <li>HTML cleaning</li>
+          <li>Deduplication (MinHash)</li>
+          <li>Structure detection</li>
+          <li>Table extraction</li>
+          <li>PII masking</li>
+        </ul>
+      </div>
+      <div class="arrow-h" id="a2"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="node" id="n-chunk">
+        <div class="node-title">✂️ Chunking</div>
+        <ul class="node-items">
+          <li>Semantic chunks</li>
+          <li>Recursive splitting</li>
+          <li>Sentence-aware</li>
+          <li>Configurable overlap</li>
+          <li>Boundary respect</li>
+        </ul>
+      </div>
+      <div class="arrow-h" id="a3"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="node" id="n-enrich">
+        <div class="node-title">🏷️ Enrichment</div>
+        <ul class="node-items">
+          <li>Metadata extraction</li>
+          <li>Entity detection</li>
+          <li>Keyword generation</li>
+          <li>Summaries</li>
+          <li>Timestamps</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ LAYER 2: EMBEDDING + STORAGE ═══════════════════════════════ -->
+  <div class="arrow-v" id="av1"><svg viewBox="0 0 24 36"><path d="M12 4v28M6 26l6 6 6-6"/></svg></div>
+  <div class="pipeline-layer layer-embed" id="layer-embed">
+    <div class="layer-header">
+      <span class="layer-badge">STAGE 2</span>
+      <span class="layer-title">Embedding + Storage</span>
+    </div>
+    <div class="layer-content">
+      <div class="node" id="n-embed">
+        <div class="node-title">🧠 Embedding Model</div>
+        <ul class="node-items">
+          <li>OpenAI (text-embedding-3)</li>
+          <li>HuggingFace (MiniLM)</li>
+          <li>Cohere (embed-v3)</li>
+          <li>Local models (ONNX)</li>
+          <li>Batch + cache</li>
+        </ul>
+      </div>
+      <div class="arrow-h" id="a4"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="node" id="n-vectordb">
+        <div class="node-title">🗄️ Vector Database</div>
+        <ul class="node-items">
+          <li>ChromaDB (default)</li>
+          <li>Pinecone</li>
+          <li>pgvector</li>
+          <li>Qdrant</li>
+          <li>Cosine similarity</li>
+        </ul>
+      </div>
+      <div class="arrow-h" id="a5"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="node" id="n-index">
+        <div class="node-title">📑 Indexing Layer</div>
+        <ul class="node-items">
+          <li>BM25 / keyword index</li>
+          <li>Hybrid index</li>
+          <li>Metadata filters</li>
+          <li>Normalization</li>
+          <li>Redis cache</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ LAYER 3: RETRIEVAL PIPELINE ════════════════════════════════ -->
+  <div class="arrow-v" id="av2"><svg viewBox="0 0 24 36"><path d="M12 4v28M6 26l6 6 6-6"/></svg></div>
+  <div class="pipeline-layer layer-retrieve" id="layer-retrieve">
+    <div class="layer-header">
+      <span class="layer-badge">STAGE 3</span>
+      <span class="layer-title">Retrieval Pipeline</span>
+    </div>
+    <div class="layer-content">
+      <div class="node" id="n-query">
+        <div class="node-title">💬 User Query</div>
+        <ul class="node-items">
+          <li>Question input</li>
+          <li>Chat history</li>
+          <li>Metadata filters</li>
+        </ul>
+      </div>
+      <div class="arrow-h" id="a6"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="node" id="n-understand">
+        <div class="node-title">🔍 Query Understanding</div>
+        <ul class="node-items">
+          <li>Rewrite query</li>
+          <li>Entity detection</li>
+          <li>Intent classification</li>
+          <li>Query expansion</li>
+          <li>Time awareness</li>
+        </ul>
+      </div>
+      <div class="arrow-h" id="a7"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="node" id="n-search">
+        <div class="node-title">🔎 Multi-Search</div>
+        <ul class="node-items">
+          <li>Vector search</li>
+          <li>Keyword search</li>
+          <li>Hybrid retrieval</li>
+          <li>Metadata filtering</li>
+        </ul>
+      </div>
+      <div class="arrow-h" id="a8"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="node" id="n-postret">
+        <div class="node-title">⭐ Post-Retrieval</div>
+        <ul class="node-items">
+          <li>Cross-encoder reranking</li>
+          <li>Deduplication</li>
+          <li>Context compression</li>
+          <li>Chunk stitching</li>
+          <li>Permission filtering</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ LAYER 4: GENERATION + OUTPUT ═══════════════════════════════ -->
+  <div class="arrow-v" id="av3"><svg viewBox="0 0 24 36"><path d="M12 4v28M6 26l6 6 6-6"/></svg></div>
+  <div class="pipeline-layer layer-generate" id="layer-generate">
+    <div class="layer-header">
+      <span class="layer-badge">STAGE 4</span>
+      <span class="layer-title">Generation + Output</span>
+    </div>
+    <div class="layer-content">
+      <div class="node" id="n-context">
+        <div class="node-title">📋 Context Assembly</div>
+        <ul class="node-items">
+          <li>Top chunks ranked</li>
+          <li>Token budget</li>
+          <li>Ordering strategy</li>
+          <li>Citation mapping</li>
+        </ul>
+      </div>
+      <div class="arrow-h" id="a9"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="node" id="n-prompt">
+        <div class="node-title">📝 Prompt Construction</div>
+        <ul class="node-items">
+          <li>System prompt</li>
+          <li>User query</li>
+          <li>Retrieved context</li>
+          <li>Guardrails</li>
+        </ul>
+      </div>
+      <div class="arrow-h" id="a10"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="node" id="n-llm">
+        <div class="node-title">🤖 LLM</div>
+        <ul class="node-items">
+          <li>Grounded generation</li>
+          <li>Reasoning chain</li>
+          <li>Confidence scoring</li>
+          <li>Low-conf refusal</li>
+        </ul>
+      </div>
+      <div class="arrow-h" id="a11"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="node" id="n-output">
+        <div class="node-title">✅ Final Output</div>
+        <ul class="node-items">
+          <li>Answer text</li>
+          <li>Citations [1] [2]</li>
+          <li>Source references</li>
+          <li>Confidence score</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ LAYER 5: SECURITY ══════════════════════════════════════════ -->
+  <div class="arrow-v" id="av4"><svg viewBox="0 0 24 36"><path d="M12 4v28M6 26l6 6 6-6"/></svg></div>
+  <div class="pipeline-layer layer-security" id="layer-security">
+    <div class="layer-header">
+      <span class="layer-badge">CROSS-CUT</span>
+      <span class="layer-title">Security / Governance / Observability</span>
+    </div>
+    <div class="layer-content">
+      <div class="node" id="n-auth">
+        <div class="node-title">🔐 Authentication</div>
+        <ul class="node-items">
+          <li>API key management</li>
+          <li>JWT / OAuth2</li>
+          <li>RBAC roles</li>
+        </ul>
+      </div>
+      <div class="arrow-h" id="a12"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="node" id="n-encrypt">
+        <div class="node-title">🛡️ Data Protection</div>
+        <ul class="node-items">
+          <li>Encryption at rest</li>
+          <li>Encryption in transit</li>
+          <li>PII auto-masking</li>
+          <li>ACL filtering</li>
+        </ul>
+      </div>
+      <div class="arrow-h" id="a13"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="node" id="n-audit">
+        <div class="node-title">📊 Audit + Compliance</div>
+        <ul class="node-items">
+          <li>Query/response logging</li>
+          <li>HIPAA / SOC2 / GDPR</li>
+          <li>FedRAMP / PCI-DSS</li>
+          <li>Data retention</li>
+        </ul>
+      </div>
+      <div class="arrow-h" id="a14"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="node" id="n-eval">
+        <div class="node-title">📈 Evaluation</div>
+        <ul class="node-items">
+          <li>Faithfulness score</li>
+          <li>Relevancy metrics</li>
+          <li>Context precision</li>
+          <li>Feedback loop</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="note-banner">
+  LLMRAG v1.0 — <a href="https://github.com/kennyb7322/LLMRAG-V3">github.com/kennyb7322/LLMRAG-V3</a> — Ken Barnes / UCS Solutions
+</div>
+
+<!-- ═══ Status Bar ═══════════════════════════════════════════════════ -->
+<div class="status-bar">
+  <div class="status-text" id="status-text">Ready — click "Run Full Animation" to begin</div>
+  <div class="status-progress">
+    <div class="status-dot" id="sd1"></div>
+    <div class="status-dot" id="sd2"></div>
+    <div class="status-dot" id="sd3"></div>
+    <div class="status-dot" id="sd4"></div>
+    <div class="status-dot" id="sd5"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// LLMRAG Pipeline Animation Engine
+// ═══════════════════════════════════════════════════════════════════════
+
+const LAYERS = ['ingest', 'embed', 'retrieve', 'generate', 'security'];
+const STATUS_MESSAGES = {
+  ingest: '📥 Ingesting data sources → preprocessing → chunking → enrichment...',
+  embed: '🧠 Generating embeddings → storing vectors → building indices...',
+  retrieve: '🔍 Processing query → multi-search → reranking → filtering...',
+  generate: '✨ Assembling context → constructing prompt → calling LLM → formatting output...',
+  security: '🔐 Validating auth → checking permissions → logging audit → compliance scan...',
+};
+
+let animationRunning = false;
+let animTimeout = null;
+
+function setStatus(text) {
+  document.getElementById('status-text').textContent = text;
+}
+
+function setDot(index, state) {
+  const dot = document.getElementById(`sd${index}`);
+  dot.className = 'status-dot' + (state ? ` ${state}` : '');
+}
+
+function resetAll() {
+  if (animTimeout) clearTimeout(animTimeout);
+  animationRunning = false;
+
+  document.querySelectorAll('.pipeline-layer').forEach(l => l.classList.remove('visible'));
+  document.querySelectorAll('.node').forEach(n => {
+    n.classList.remove('active', 'highlight', 'processing', 'done');
+    n.querySelectorAll('.node-items li').forEach(li => li.classList.remove('lit'));
+  });
+  document.querySelectorAll('.arrow-h, .arrow-v').forEach(a => a.classList.remove('visible'));
+  document.querySelectorAll('.callout').forEach(c => c.classList.remove('visible'));
+  for (let i = 1; i <= 5; i++) setDot(i, '');
+  setStatus('Ready — click "Run Full Animation" to begin');
+}
+
+function sleep(ms) {
+  return new Promise(resolve => { animTimeout = setTimeout(resolve, ms); });
+}
+
+async function animateNode(id, delay = 200) {
+  if (!animationRunning) return;
+  const node = document.getElementById(id);
+  node.classList.add('active', 'processing');
+  await sleep(delay);
+
+  // Light up items one by one
+  const items = node.querySelectorAll('.node-items li');
+  for (const item of items) {
+    if (!animationRunning) return;
+    item.classList.add('lit');
+    await sleep(120);
+  }
+
+  node.classList.remove('processing');
+  node.classList.add('done');
+}
+
+async function showArrow(id) {
+  if (!animationRunning) return;
+  const el = document.getElementById(id);
+  if (el) el.classList.add('visible');
+  await sleep(200);
+}
+
+async function animateLayerFull(layerName, stageNum) {
+  if (!animationRunning) return;
+
+  setStatus(STATUS_MESSAGES[layerName]);
+  setDot(stageNum, 'current');
+
+  // Show layer
+  const layer = document.getElementById(`layer-${layerName}`);
+  layer.classList.add('visible');
+  await sleep(300);
+
+  // Show vertical arrow before (except first)
+  if (stageNum > 1) {
+    await showArrow(`av${stageNum - 1}`);
+  }
+
+  // Get nodes and arrows in this layer
+  const nodes = layer.querySelectorAll('.node');
+  const arrows = layer.querySelectorAll('.arrow-h');
+
+  for (let i = 0; i < nodes.length; i++) {
+    if (!animationRunning) return;
+    await animateNode(nodes[i].id, 300);
+    if (i < arrows.length) {
+      await showArrow(arrows[i].id);
+    }
+  }
+
+  setDot(stageNum, 'lit');
+  await sleep(400);
+}
+
+async function animateLayer(layerName) {
+  resetAll();
+  animationRunning = true;
+  const idx = LAYERS.indexOf(layerName) + 1;
+  await animateLayerFull(layerName, idx);
+  animationRunning = false;
+  setStatus(`✅ Stage ${idx} complete: ${layerName.charAt(0).toUpperCase() + layerName.slice(1)}`);
+}
+
+async function runFullAnimation() {
+  resetAll();
+  animationRunning = true;
+  setStatus('🚀 Starting LLMRAG pipeline animation...');
+  await sleep(600);
+
+  for (let i = 0; i < LAYERS.length; i++) {
+    if (!animationRunning) return;
+    await animateLayerFull(LAYERS[i], i + 1);
+  }
+
+  setStatus('✅ Pipeline complete — all stages operational');
+  animationRunning = false;
+}
+
+// Auto-start on load
+window.addEventListener('load', () => {
+  setTimeout(() => runFullAnimation(), 800);
+});
+</script>
+</body>
+</html>
